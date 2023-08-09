@@ -89,13 +89,13 @@ std::vector<std::vector<int>> undo_dct(const std::vector<std::vector<double>>& d
     return output;
 }
 
-std::vector<std::vector<double>> embed_to_dct(std::vector<std::vector<double>> dct_matrix, const string bit_string, double q = 8.0){
+std::vector<std::vector<double>> embed_to_dct(std::vector<std::vector<double>> dct_matrix, const string bit_string, double q = 20.0){
     int ind = 0;
     std::vector<std::vector<int>> IDX = ret_idx();
     for (const auto& coord : IDX) {
         int i = coord[0], j = coord[1];
         dct_matrix[i][j] = sign(dct_matrix[i][j]) * (q * int(abs(dct_matrix[i][j]) / q) + (q/2) * (int(bit_string[ind]) - int('0')));
-        ind += 1;
+        ind++;
     }
     return dct_matrix;
 }
@@ -113,8 +113,8 @@ std::vector<std::vector<double>> generate_population(vector<vector<int>> origina
         for (int j = 0; j < original[0].size();j++)
             diff.push_back(original[i][j]-notorig[i][j]);
     
-    vector<vector<double>> population(population_size-1,vector<double>(diff.size()));
-    population.push_back(diff);
+    vector<vector<double>> population(population_size,vector<double>(diff.size()));
+    //population.push_back(diff);
 
     for (int i = 0; i < population_size; i++){
         for (int j = 0; j < diff.size(); j++){
@@ -162,7 +162,7 @@ class Metric{
     Metric(const std::vector<std::vector<int>>& block_matrix, const std::string& bit_string, const int& search_space)
         : block_matrix(block_matrix), bit_string(bit_string), search_space(search_space) {}
 
-    std::pair<double, vector<double>> metric(const std::vector<double>& block, int q = 8) {//block float?
+    std::pair<double, vector<double>> metric(const std::vector<double>& block, int q = 20) {//block float?
 
         std::vector<vector<int>> new_block = block_matrix;
         vector<double> block_flatten = block; 
@@ -194,7 +194,7 @@ class Metric{
             for (int j = 0; j < 8; j++)
                 sum_elem += pow(block_matrix[i][j] - new_block[i][j],2);
         double psnr = 10 * log10((pow(8,2) * pow(255,2)) / double(sum_elem));
-    
+
         //extraction
         vector <vector<double>> dct_block = do_dct(new_block);
         string s;
@@ -329,7 +329,7 @@ class TLBO{
                     best_index = i;
             }
             vector<double> teacher = population[best_index];
-            cout << fitness[best_index];
+            //cout << fitness[best_index];
             vector <double> population_mean = meanAlongAxis(population);
 
             for (int i = 0; i < population_size;i++){
@@ -405,11 +405,10 @@ class SCA{
             agents[i] = pr.second;
             fitness.push_back(pr.first);
         }
-
         int best_agent_index  = 0;
         for (int i = 0; i < fitness.size();i++){
-                if (fitness[i] > fitness[best_agent_index])
-                    best_agent_index = i;
+            if (fitness[i] > fitness[best_agent_index])
+                best_agent_index = i;
         }
         double best_agent_fitness = fitness[best_agent_index];
         vector <double> best_agent = agents[best_agent_index];
@@ -433,10 +432,10 @@ class SCA{
                 if (now_func_bl.first > fitness[i]){
                     agents[i] = now_func_bl.second;
                     fitness[i] = now_func_bl.first;
-                    if (fitness[i] > best_agent_fitness){
-                        best_agent_fitness = fitness[i];
-                        best_agent = agents[i];
-                    }
+                //     if (fitness[i] > best_agent_fitness){
+                //         best_agent_fitness = fitness[i];
+                //         best_agent = agents[i];
+                //     }
                 }
                 if (flag){
                     if (best_agent_fitness > 0){
@@ -445,14 +444,34 @@ class SCA{
                     }
                 }
             }
-           cout << best_agent_fitness;
+           //cout << best_agent_fitness;
+        }
+        best_agent_fitness = 0;
+        for (int i = 0; i < agents.size(); i++){
+            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+            agents[i] = pr.second;
+            fitness[i] = pr.first;
+            if (fitness[i] > best_agent_fitness){
+                best_agent_fitness = fitness[i];
+                best_agent = agents[i];
+            }
         }
         std::pair<double,vector<double>> to_ret = std::make_pair(best_agent_fitness,best_agent);
         return to_ret;
     }
 };
 
-std::string extracting_dct(std::vector<std::vector<int>> pixel_block, double q = 8.0){
+double psnr(std::vector<std::vector<int>> original_img,std::vector<std::vector<int>> saved_img){
+    int sum_elem = 0;
+    for (int i = 0; i < original_img.size(); i++)
+        for (int j = 0; j < original_img[0].size(); j++)
+            sum_elem += pow(original_img[i][j] - saved_img[i][j],2);
+        
+    double psnr = 10 * log10(pow(255,4) / double(sum_elem));
+    return psnr;
+}
+
+std::string extracting_dct(std::vector<std::vector<int>> pixel_block, double q = 20.0){
     vector <vector<double>> dct_block = do_dct(pixel_block);
     string s;
     vector<vector<int>> IDX = ret_idx();
@@ -504,6 +523,7 @@ int main() {
 
         vector<vector<int>> copy_img = img;
         int cnt = 0;
+        int cnt_blocks = 0;
         //for all blocks
         for (int i : blocks){
             //getting image block
@@ -517,8 +537,13 @@ int main() {
             //dct transform
             vector<vector<double>> dct_matrix;
             dct_matrix = do_dct(pixel_matrix);
-            
-            //embedding info может тут быть проблема с дкт-преобразованием? слишком ровные числа и маленькие
+            // //
+            // for (int i1 = 0 ;i1 < 8; i1++)
+            //     for (int i2 = 0;i2 < 8; i2++)
+            //         cout << dct_matrix[i1][i2] << ' ';
+            // break;
+            // //
+            //embedding info 
             dct_matrix = embed_to_dct(dct_matrix, string(1, '1') + information.substr(ind_information, 31));
             //undo dct matrix
             vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
@@ -537,19 +562,21 @@ int main() {
                 int ind = 0;
                 for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++){
                     for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++){
-                        copy_img[i1][i2] += solution.second[ind++];
+                        copy_img[i1][i2] += solution.second[ind];
+                        ind++;
+                        //cout << copy_img[i1][i2] <<' ';
                     }
                 }
                 //ind_information += 31;
             }
             else{
-                cout <<"aboba";
                 int searching = 5;
                 dct_matrix = embed_to_dct(dct_matrix, string(1, '0') + EMBED_ZERO);
                 vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
                 vector<vector<double>> population = generate_population(pixel_matrix,new_pixel_matrix,128,double(0.9),searching);
                 Metric metric(pixel_matrix,string(1, '0') + EMBED_ZERO, searching);
                 SCA sca(population,128,128,64);
+
                 pair <double,vector<double>> solution = sca.optimize(metric,1); 
                 int ind = 0;
                 for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++){
@@ -558,8 +585,7 @@ int main() {
                     }
                 }
             }
-            break;     //delete
-        cout <<"aboba";
+        cout <<endl << cnt_blocks++ << ' ';
         }
 
         //saving image
@@ -575,6 +601,7 @@ int main() {
         // Save the image using imwrite
         std::string outputFilePath = "saved.png";
         bool success = cv::imwrite(outputFilePath, imageMat);
+        cout << cnt;
     }
 
     else{
@@ -609,13 +636,23 @@ int main() {
             string s = extracting_dct(pixel_matrix);
             cout << s;
             if (s != "F")
-                bit_string += s.substr(1);
-            break;
+                bit_string += s.substr(1) + "\n";
         }
 
         std::ofstream outputFile("saved.txt");
         outputFile << bit_string;
         outputFile.close(); 
+
+        cv::Mat image_base = cv::imread("lena512.png", cv::IMREAD_GRAYSCALE);
+        rows = image_base.rows;
+        cols = image_base.cols;
+        std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
+
+        // Copy pixel values from the OpenCV image to the 2D vector
+        for (int i = 0; i < rows; i++) 
+            for (int j = 0; j < cols; j++) 
+                img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
+
+        cout << psnr(img_base,img);
     }
 }
-
