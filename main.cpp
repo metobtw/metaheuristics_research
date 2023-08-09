@@ -8,20 +8,6 @@
 
 using namespace std;
 
-vector <vector<int>> ret_idx(){
-    vector<vector<int>> IDX = {
-        {3, 4}, {2, 5}, {1, 6}, {0, 7},
-        {1, 7}, {2, 6}, {3, 5}, {4, 4},
-        {5, 3}, {6, 2}, {7, 1}, {7, 2},
-        {6, 3}, {5, 4}, {4, 5}, {3, 6},
-        {2, 7}, {3, 7}, {4, 6}, {5, 5},
-        {6, 4}, {7, 3}, {7, 4}, {6, 5},
-        {5, 6}, {4, 7}, {5, 7}, {6, 6},
-        {7, 5}, {7, 6}, {6, 7}, {7, 7}
-    };
-    return IDX;
-}
-
 int sign(int x){
     return (x > 0) - (x < 0);
 }
@@ -89,13 +75,17 @@ std::vector<std::vector<int>> undo_dct(const std::vector<std::vector<double>>& d
     return output;
 }
 
-std::vector<std::vector<double>> embed_to_dct(std::vector<std::vector<double>> dct_matrix, const string bit_string, double q = 20.0){
+std::vector<std::vector<double>> embed_to_dct(std::vector<std::vector<double>> dct_matrix, const string bit_string, const char mode = 'A', double q = 20.0){
     int ind = 0;
-    std::vector<std::vector<int>> IDX = ret_idx();
-    for (const auto& coord : IDX) {
-        int i = coord[0], j = coord[1];
-        dct_matrix[i][j] = sign(dct_matrix[i][j]) * (q * int(abs(dct_matrix[i][j]) / q) + (q/2) * (int(bit_string[ind]) - int('0')));
-        ind++;
+    int cntj = 6;
+    for (int i = 0; i < dct_matrix.size(); i++){
+        for (int j = dct_matrix[0].size() - 1; j > cntj; j--){
+            dct_matrix[i][j] = sign(dct_matrix[i][j]) * (q * int(abs(dct_matrix[i][j]) / q) + (q/2) * (int(bit_string[ind]) - int('0')));
+            if (mode != 'A') return dct_matrix;
+            ind++;
+        }
+        if (i == 3) continue;
+        cntj--;
     }
     return dct_matrix;
 }
@@ -158,9 +148,10 @@ class Metric{
     std::vector<std::vector<int>> block_matrix;
     std::string bit_string;
     int search_space;
+    char mode;
     public: 
-    Metric(const std::vector<std::vector<int>>& block_matrix, const std::string& bit_string, const int& search_space)
-        : block_matrix(block_matrix), bit_string(bit_string), search_space(search_space) {}
+    Metric(const std::vector<std::vector<int>>& block_matrix, const std::string& bit_string, const int& search_space, const char& mode)
+        : block_matrix(block_matrix), bit_string(bit_string), search_space(search_space), mode(mode) {}
 
     std::pair<double, vector<double>> metric(const std::vector<double>& block, int q = 20) {//block float?
 
@@ -169,7 +160,7 @@ class Metric{
         for (int i = 0; i < block_flatten.size(); i++){
             block_flatten[i] = floor(block_flatten[i]);
             if ((block_flatten[i] < -search_space) || (block_flatten[i] > search_space))
-               block_flatten[i] = getRandomInteger(search_space);
+                block_flatten[i] = getRandomInteger(search_space);
         }
 
         int ind_fl = 0;
@@ -198,19 +189,24 @@ class Metric{
         //extraction
         vector <vector<double>> dct_block = do_dct(new_block);
         string s;
-        vector<vector<int>> IDX = ret_idx();
-        for (const auto& coord : IDX) {
-            int i = coord[0], j = coord[1];
-            int c0 = sign(dct_block[i][j]) * (q * int(abs(dct_block[i][j]) / q) + (q/2) * (0));
-            int c1 = sign(dct_block[i][j]) * (q * int(abs(dct_block[i][j]) / q) + (q/2) * (1));
-            if (abs(dct_block[i][j] - c0) < abs(dct_block[i][j] - c1))
-                s += '0';
-            else
-                s += '1';
-            if (s[0] != bit_string[0]){
-                std::pair<double, vector<double>> to_ret = std::make_pair(0.0, block_flatten);
-                return to_ret;
+        int cntj = 6;
+        for (int i = 0; i < dct_block.size(); i++){
+            for (int j = dct_block[0].size() - 1; j > cntj; j--){
+                int c0 = sign(dct_block[i][j]) * (q * int(abs(dct_block[i][j]) / q) + (q/2) * (0));
+                int c1 = sign(dct_block[i][j]) * (q * int(abs(dct_block[i][j]) / q) + (q/2) * (1));
+                if (abs(dct_block[i][j] - c0) < abs(dct_block[i][j] - c1))
+                    s += '0';
+                else
+                    s += '1';
+                if (s[0] != bit_string[0]){
+                    std::pair<double, vector<double>> to_ret = std::make_pair(0.0, block_flatten);
+                    return to_ret;
+                }
+                if (mode == 'Z') break;
             }
+            if (mode == 'Z') break;
+            if (i == 3) continue;
+            cntj--; 
         }
         int cnt = 0;
         for (int i = 0; i < s.length(); i++)
@@ -474,18 +470,21 @@ double psnr(std::vector<std::vector<int>> original_img,std::vector<std::vector<i
 std::string extracting_dct(std::vector<std::vector<int>> pixel_block, double q = 20.0){
     vector <vector<double>> dct_block = do_dct(pixel_block);
     string s;
-    vector<vector<int>> IDX = ret_idx();
-    for (const auto& coord : IDX) {
-        int i = coord[0], j = coord[1];
-        int c0 = sign(dct_block[i][j]) * (q * int(abs(dct_block[i][j]) / q) + (q/2) * (0));
-        int c1 = sign(dct_block[i][j]) * (q * int(abs(dct_block[i][j]) / q) + (q/2) * (1));
-        if (abs(dct_block[i][j] - c0) < abs(dct_block[i][j] - c1)){
-            s += '0';
-            if (s == "0")
-                return "F";
+    int cntj = 6;
+    for (int i = 0; i < dct_block.size(); i++){
+        for (int j = dct_block[0].size() - 1; j > cntj; j--){
+            int c0 = sign(dct_block[i][j]) * (q * int(abs(dct_block[i][j]) / q) + (q/2) * (0));
+            int c1 = sign(dct_block[i][j]) * (q * int(abs(dct_block[i][j]) / q) + (q/2) * (1));
+            if (abs(dct_block[i][j] - c0) < abs(dct_block[i][j] - c1)){
+                s += '0';
+                if (s == "0")
+                    return "F";
+            }
+            else
+                s += '1';
         }
-        else
-            s += '1';
+        if (i == 3) continue;
+        cntj--;
     }
     return s;
 }
@@ -504,7 +503,7 @@ int main() {
         inputFile.close();
         
         //opening image
-        cv::Mat image = cv::imread("lena512.png", cv::IMREAD_GRAYSCALE);
+        cv::Mat image = cv::imread("lena64.png", cv::IMREAD_GRAYSCALE);
         int rows = image.rows;
         int cols = image.cols;
         std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
@@ -548,15 +547,16 @@ int main() {
             //undo dct matrix
             vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
             //generating population
-            vector<vector<double>> population = generate_population(pixel_matrix,new_pixel_matrix,128,double(0.9),SEARCH_SPACE);
+            vector<vector<double>> population = generate_population(pixel_matrix,new_pixel_matrix,128,double(0.6),SEARCH_SPACE);
             //metric for block and info
-            Metric metric(pixel_matrix,string(1, '1') + information.substr(ind_information, 31), SEARCH_SPACE);
+            Metric metric(pixel_matrix,string(1, '1') + information.substr(ind_information, 31), SEARCH_SPACE, 'A');
             //tlbo size
-            //TLBO tlbo(population,128,128,64);
-            SCA sca(population,128,128,64);
-            pair <double,vector<double>> solution = sca.optimize(metric);
+            //TLBO meta(population,128,128,64);
+            SCA meta(population,128,128,64);
+            pair <double,vector<double>> solution = meta.optimize(metric);
             cout << solution.first;
-
+            for (int iz = 0; iz < solution.second.size(); iz++)
+                cout << solution.second[iz] << ' '; 
             if (solution.first > 1){
                 cnt += 1;
                 int ind = 0;
@@ -571,10 +571,10 @@ int main() {
             }
             else{
                 int searching = 5;
-                dct_matrix = embed_to_dct(dct_matrix, string(1, '0') + EMBED_ZERO);
+                dct_matrix = embed_to_dct(dct_matrix, string(1, '0'), 'Z');
                 vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
                 vector<vector<double>> population = generate_population(pixel_matrix,new_pixel_matrix,128,double(0.9),searching);
-                Metric metric(pixel_matrix,string(1, '0') + EMBED_ZERO, searching);
+                Metric metric(pixel_matrix,string(1, '0'), searching, 'Z');
                 SCA sca(population,128,128,64);
 
                 pair <double,vector<double>> solution = sca.optimize(metric,1); 
@@ -643,7 +643,7 @@ int main() {
         outputFile << bit_string;
         outputFile.close(); 
 
-        cv::Mat image_base = cv::imread("lena512.png", cv::IMREAD_GRAYSCALE);
+        cv::Mat image_base = cv::imread("lena64.png", cv::IMREAD_GRAYSCALE);
         rows = image_base.rows;
         cols = image_base.cols;
         std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
