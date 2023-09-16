@@ -676,6 +676,41 @@ double psnr(std::vector<std::vector<int>> original_img,std::vector<std::vector<i
     return psnr;
 }
 
+double ssim(std::vector<std::vector<int>> original_img,std::vector<std::vector<int>> saved_img){
+    /*
+        Функция принимает на вход оригинальное изображение и изображение после вставки
+        На выходе - значение метрики ssim
+    */
+    double mean1 = 0, mean2 = 0;
+    for (int i = 0; i < original_img.size(); i++){
+        for (int j = 0; j < original_img[0].size(); j++){
+            mean1 += original_img[i][j];
+            mean2 += saved_img[i][j];
+        }
+    }
+    mean1 /= ((original_img.size()*original_img.size())*3);
+    mean2 /= ((original_img.size()*original_img.size())*3);
+
+    double sd1 = 0, sd2 = 0, cov = 0;
+
+
+    for (int i = 0; i < original_img.size(); i++){
+        for (int j = 0; j < original_img[0].size(); j++){
+            sd1 += (original_img[i][j]/3 - mean1) * (original_img[i][j]/3 - mean1);
+            sd2 += (saved_img[i][j]/3 - mean2) * (saved_img[i][j]/3 - mean2);
+            cov += (original_img[i][j] / 3 - mean1) * (saved_img[i][j] / 3 - mean2);
+        }
+    }
+    
+    cov /= (original_img.size()*original_img.size());
+    sd1 = pow((sd1 / (original_img.size()*original_img.size())),0.5);
+    sd2 = pow((sd2 / (original_img.size()*original_img.size())),0.5);
+
+    double c1 = pow(0.01*255,2), c2 = pow(0.03*255,2);
+    return ((2 * mean1 * mean2 + c1) * (2 * cov + c2)) / (
+            (pow(mean1,2) + pow(mean2,2) + c1) * (pow(sd1,2) + pow(sd2,2) + c2));
+}
+
 
 int main() {
     int mode; // выбор режима - встраивание\извлечение
@@ -846,7 +881,7 @@ int main() {
         cout << cnt1;
     }
 
-    else{ // извлечение
+    else if (mode == 2){ // извлечение
         string bit_string = "";
 
         //открываем изображение
@@ -909,6 +944,29 @@ int main() {
         for (int i = 0; i < rows; i++) 
             for (int j = 0; j < cols; j++) 
                 img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
-        cout << psnr(img_base,img);
+        cout << psnr(img_base,img) << ' '<< ssim(img_base,img);
+    }
+    else{
+        //открываем изображение
+        string route; 
+        cin >> route;
+        cv::Mat image = cv::imread(route, cv::IMREAD_GRAYSCALE);
+        int rows = image.rows;
+        int cols = image.cols;
+        std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
+
+        // переводим из формата <Mat> в <vector>
+        for (int i = 0; i < rows; i++) 
+            for (int j = 0; j < cols; j++) 
+                img[i][j] = static_cast<int>(image.at<uchar>(i, j));
+
+        cv::Mat image_base = cv::imread(picture, cv::IMREAD_GRAYSCALE);
+        rows = image_base.rows;
+        cols = image_base.cols;
+        std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
+        for (int i = 0; i < rows; i++) 
+            for (int j = 0; j < cols; j++) 
+                img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
+        cout << psnr(img_base,img) << ' '<< ssim(img_base,img);
     }
 }
