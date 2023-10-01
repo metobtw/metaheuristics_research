@@ -5,7 +5,8 @@
 #include <random>
 #include <vector>
 #include <cmath>
-
+#include <filesystem>
+#include <windows.h>
 using namespace std;
 
 int sign(double x){
@@ -713,10 +714,23 @@ double ssim(std::vector<std::vector<int>> original_img,std::vector<std::vector<i
 
 
 int main() {
-    int mode; // выбор режима - встраивание\извлечение
-    cin >> mode;
-    string picture;
-    cin >> picture;
+    // int mode; // выбор режима - встраивание\извлечение
+    // cin >> mode;
+    // string picture;
+    // cin >> picture;
+    //  
+    vector <string> pictures{
+    "airplane512.png","baboon512.png","barbara512.png",
+    "boat512.png","goldhill512.png","stream_and_bridge512.png"
+    };
+    for (int i = 0; i < pictures.size(); i++){
+
+    string picture = pictures[i]; 
+    cout << picture << ' ';
+    const string directoryPath = picture + "tlbo";
+    // Create the directory using mkdir
+    int status = CreateDirectory(directoryPath.c_str(), NULL);
+    int mode = 3;
     if (mode == 1){ // встраивание
         const int SEARCH_SPACE = 10; // пространство поиска
 
@@ -740,7 +754,8 @@ int main() {
 
         //генерация порядка блоков, сохранение их в файл 
         vector <int> blocks = generate_blocks(rows*cols/64);
-        std::ofstream outputFile("blocks.txt");
+        std::ofstream outputFile(picture + "de/blocks.txt");
+        cout << 1;
         for (int num: blocks)
             outputFile << num << ' ';
         outputFile.close();
@@ -749,7 +764,7 @@ int main() {
         int cnt1 = 0;
         int cnt_blocks = 0;
 
-        std::ofstream outputInfo("allinfo.txt");
+        //std::ofstream outputInfo("allinfo.txt");
 
         for (int i : blocks){
             //cout <<endl << cnt_blocks++ << ' ' << endl;
@@ -762,12 +777,12 @@ int main() {
                     pixel_matrix[i1-block_h * 8][i2-block_w*8] = img[i1][i2];
 
             //матрица до изменений
-            for (const auto& row : pixel_matrix) {
-            for (const int value : row) {
-                outputInfo << value << ' ';
-            }
-            outputInfo << '\n';
-            }
+            // for (const auto& row : pixel_matrix) {
+            // for (const int value : row) {
+            //     outputInfo << value << ' ';
+            // }
+            // outputInfo << '\n';
+            // }
 
             //трансформация из пикселей в DCT-coef
             vector<vector<double>> dct_matrix;
@@ -786,9 +801,9 @@ int main() {
             Metric metric(pixel_matrix,string(1, '1') + information.substr(ind_information, 31), SEARCH_SPACE, 'A');
 
             //выбор метаэвристики и оптимизации с помощью нее
-            // TLBO meta(population,128,128,64);
-            SCA meta(population,128,128,64);
-            // DE meta(population,128,128,64);
+            //TLBO meta(population,128,128,64);
+            //SCA meta(population,128,128,64);
+            DE meta(population,128,128,64);
             pair <double,vector<double>> solution = meta.optimize(metric);
 
             if (solution.first > 1){ // значение кач-ва метрики >1 => информация встроена идеально, сохранем новый блок, добавляя к нему матрицу изменений
@@ -801,17 +816,17 @@ int main() {
                     }
                 }
             //матрица после изменений
-            outputInfo << '\n';
-            for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++){
-                for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++){
-                outputInfo << copy_img[i1][i2] << ' ';
-            }
-            outputInfo << '\n';
-            }
-            //матрица изменений
-            outputInfo << '\n';
-            for (int i1 = 0; i1 < solution.second.size();i1++)
-                outputInfo << solution.second[i1] << ' ';
+            // outputInfo << '\n';
+            // for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++){
+            //     for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++){
+            //     outputInfo << copy_img[i1][i2] << ' ';
+            // }
+            // outputInfo << '\n';
+            // }
+            // //матрица изменений
+            // outputInfo << '\n';
+            // for (int i1 = 0; i1 < solution.second.size();i1++)
+            //     outputInfo << solution.second[i1] << ' ';
 
 
             vector <vector <int>> new_pixel_matrix_1(8,vector<int>(8));
@@ -819,9 +834,9 @@ int main() {
                 for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++)
                     new_pixel_matrix_1[i1-block_h*8][i2-block_w*8] = copy_img[i1][i2];
 
-            string s2 = string(1, '1') + information.substr(ind_information, 31);
+            //string s2 = string(1, '1') + information.substr(ind_information, 31);
             //информация встроенная
-            outputInfo << '\n' << s2 << '\n' << "---------------------" << '\n';
+            //outputInfo << '\n' << s2 << '\n' << "---------------------" << '\n';
             ind_information += 31; // переход к следующей части информации
             }
 
@@ -855,37 +870,37 @@ int main() {
             
         }
         
-        // Открываем файл для записи
-        std::ofstream outputFile1("matrix.txt");
+        // // Открываем файл для записи
+        // std::ofstream outputFile1("matrix.txt");
 
-        // Записываем значения из вектора в файл
-        for (const auto& row : copy_img) {
-            for (const int value : row) {
-                outputFile1 << value << ' ';
-            }
-            outputFile1 << '\n';
-        }
+        // // Записываем значения из вектора в файл
+        // for (const auto& row : copy_img) {
+        //     for (const int value : row) {
+        //         outputFile1 << value << ' ';
+        //     }
+        //     outputFile1 << '\n';
+        // }
 
-        // Закрываем файл
-        outputFile1.close();
+        // // Закрываем файл
+        // outputFile1.close();
 
         //сохраняем изображение
         cv::Mat imageMat(rows, cols, CV_8UC1);
         for (int row = 0; row < rows; row++) 
             for (int col = 0; col < cols; col++) 
                 imageMat.at<uchar>(row, col) = static_cast<uchar>(copy_img[row][col]);
-        std::string outputFilePath = "saved.png";
+        std::string outputFilePath = picture + "de/saved.png";
         bool success = cv::imwrite(outputFilePath, imageMat);
 
 
         cout << cnt1;
     }
-
-    else if (mode == 2){ // извлечение
+    mode = 3;
+    if (mode == 2){ // извлечение
         string bit_string = "";
 
         //открываем изображение
-        cv::Mat image = cv::imread("saved.png", cv::IMREAD_GRAYSCALE);
+        cv::Mat image = cv::imread(picture + "de/saved.png", cv::IMREAD_GRAYSCALE);
         int rows = image.rows;
         int cols = image.cols;
         std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
@@ -895,22 +910,22 @@ int main() {
             for (int j = 0; j < cols; j++) 
                 img[i][j] = static_cast<int>(image.at<uchar>(i, j));
         
-        // Открываем файл для записи
-        std::ofstream outputFile2("matrix_save.txt");
+        // // Открываем файл для записи
+        // std::ofstream outputFile2("matrix_save.txt");
 
-        // Записываем значения из вектора в файл
-        for (const auto& row : img) {
-            for (const int value : row) {
-                outputFile2 << value << ' ';
-            }
-            outputFile2 << '\n';
-        }
+        // // Записываем значения из вектора в файл
+        // for (const auto& row : img) {
+        //     for (const int value : row) {
+        //         outputFile2 << value << ' ';
+        //     }
+        //     outputFile2 << '\n';
+        // }
 
-        // Закрываем файл
-        outputFile2.close();
+        // // Закрываем файл
+        // outputFile2.close();
 
         // открываем файл с порядком блоков
-        std::ifstream inputFile("blocks.txt");
+        std::ifstream inputFile(picture + "de/blocks.txt");
         std::vector<int> blocks;
         int num;
         while (inputFile >> num) {
@@ -932,7 +947,7 @@ int main() {
                 bit_string += s.substr(1);
         }
         // сохраняем извлеченную информацию в файл
-        std::ofstream outputFile("saved.txt");
+        std::ofstream outputFile(picture + "de/saved.txt");
         outputFile << bit_string;
         outputFile.close(); 
 
@@ -944,12 +959,13 @@ int main() {
         for (int i = 0; i < rows; i++) 
             for (int j = 0; j < cols; j++) 
                 img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
-        cout << psnr(img_base,img) << ' '<< ssim(img_base,img);
+        cout << psnr(img_base,img) << ' '<< ssim(img_base,img) << '\n';
     }
     else{
         //открываем изображение
         string route; 
-        cin >> route;
+        //cin >> route;
+        route = directoryPath + "/saved.png";
         cv::Mat image = cv::imread(route, cv::IMREAD_GRAYSCALE);
         int rows = image.rows;
         int cols = image.cols;
@@ -967,6 +983,7 @@ int main() {
         for (int i = 0; i < rows; i++) 
             for (int j = 0; j < cols; j++) 
                 img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
-        cout << psnr(img_base,img) << ' '<< ssim(img_base,img);
+        cout << psnr(img_base,img) << ' '<< ssim(img_base,img) << '\n';
     }
+}
 }
