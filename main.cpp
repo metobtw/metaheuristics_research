@@ -6,7 +6,8 @@
 #include <vector>
 #include <cmath>
 #include <filesystem>
-#include <windows.h>
+#include <cstdlib>
+#include <ctime>
 using namespace std;
 
 int sign(double x){
@@ -263,15 +264,15 @@ class Metric{
         int ind_fl = 0;
         for (int i = 0; i < 8; i++){
             for (int j = 0; j < 8; j++){
-                new_block[i][j] -= block_flatten[ind_fl]; //????????????????????????????????????????????
-                if (new_block[i][j] > 255){ // выход за предел 255 в изображении, уменьшаем значение особи на разность выхода и 255 
+                new_block[i][j] -= block_flatten[ind_fl];
+                if (new_block[i][j] > 255){ // выход за предел 255 в изображении, увеличиваем значение особи на разность выхода и 255
                     int diff = abs(new_block[i][j]-255);
-                    block_flatten[ind_fl] += diff; //????????????????????
+                    block_flatten[ind_fl] += diff;
                     new_block[i][j] = 255;
                 }
-                if (new_block[i][j] < 0){ // выход за предел 0, увеличиваем значение особи на значение выхода по модулю
+                if (new_block[i][j] < 0){ // выход за предел 0, уменьшаем значение особи на значение выхода по модулю
                     int diff = abs(new_block[i][j]);
-                    block_flatten[ind_fl] -= diff; //???????????????
+                    block_flatten[ind_fl] -= diff;
                     new_block[i][j] = 0;
                 }
                 ind_fl++;
@@ -392,6 +393,17 @@ double getRandomValue(double low, double high) {
     return double(randomInteger);
 }
 
+std::vector<double> updatePosition(const std::vector<double>& agent, double t, std::pair<double,double> search) {
+    std::vector<double> new_position(agent.size());
+    for(size_t i = 0; i < agent.size(); i++) {
+        double amplitude = (search.second - search.first) / 2.0;
+        new_position[i] = agent[i] + amplitude * std::sin(2 * M_PI * t);
+        // Обеспечиваем, что новая позиция находится в пределах пространства поиска
+        new_position[i] = std::clamp(new_position[i], search.first, search.second);
+    }
+    return new_position;
+}
+
 class TLBO{
     /*
     *   Класс метаэвристики TLBO
@@ -423,7 +435,7 @@ class TLBO{
         vector<double> fitness; // вектор, содержащий значения кач-ва для каждой особи
         for (int i = 0; i < population.size(); i++){
             std::pair<double, vector<double>> pr = obj.metric(population[i]);
-            population[i] = pr.second; // обновление особи после метрики, с учетом ограничений 
+            population[i] = pr.second; // обновление особи после метрики, с учетом ограничений
             fitness.push_back(pr.first);
         }
 
@@ -515,8 +527,8 @@ class SCA{
         : population_size(population_size), num_iterations(num_iterations), num_features(num_features), agents(initial_population) {
     }
 
-    std::pair<double, vector<double>> optimize(Metric& obj, int flag = 0, double a_linear_component = 2.0) { 
-        /*  
+    std::pair<double, vector<double>> optimize(Metric& obj, int flag = 0, double a_linear_component = 2.0) {
+        /*
             Функция реализует оптимизацию метрики с помощью метаэвристики SCA
             На входе - объект класса метрики, flag - встраиваем 1 бит или несколько (для встраивания бит-флага 0)
             На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
@@ -538,7 +550,6 @@ class SCA{
         // поиск лучшего агента и лучшего значения метрики
         double best_agent_fitness = fitness[best_agent_index];
         vector <double> best_agent = agents[best_agent_index];
-
         // оптимизация метаэвристикой
         for (int t = 0; t < num_iterations; t++){
            for (int i = 0; i < agents.size(); i++){
@@ -604,7 +615,6 @@ class DE{
             На входе - объект класса метрики, flag - встраиваем 1 бит или несколько (для встраивания бит-флага 0)
             На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
         */
-
         // значения метрики для каждой особи
         double best_fitness = 0.0;
         vector<double> fitness;
@@ -613,21 +623,29 @@ class DE{
             agents[i] = pr.second;
             fitness.push_back(pr.first);
         }
-
+        double best_agent_fitness = fitness[0];
+        vector <double> best_agent = agents[0];
+        vector<double> y(agents[0].size());
         // оптимизация метаэвристикой
         for (int t = 0; t < num_iterations; t++){
            for (int i = 0; i < agents.size(); i++){
+                //cout << rand() % 4096;;
                 // выбор рандомных индексов, отличных от друг друга(a, b, c) и от i-го
-                int a_ind,b_ind,c_ind; 
-                a_ind = getRandomIndex(population_size);
-                b_ind = getRandomIndex(population_size);
-                c_ind = getRandomIndex(population_size);
-
-                while (a_ind == i) a_ind = getRandomIndex(population_size);
-                while (b_ind == i || b_ind == a_ind) b_ind = getRandomIndex(population_size);
-                while (c_ind == i || c_ind == a_ind || c_ind == b_ind) c_ind = getRandomIndex(population_size);
+                int a_ind,b_ind,c_ind;
+                //a_ind = getRandomIndex(population_size);
+                //b_ind = getRandomIndex(population_size);
+                //c_ind = getRandomIndex(population_size);
+                a_ind = rand() % agents.size();
+                b_ind = rand() % agents.size();
+                c_ind = rand() % agents.size();
+//                while (a_ind == i) a_ind = getRandomIndex(population_size);
+//                while (b_ind == i || b_ind == a_ind) b_ind = getRandomIndex(population_size);
+//                while (c_ind == i || c_ind == a_ind || c_ind == b_ind) c_ind = getRandomIndex(population_size);
+               while (a_ind == i) a_ind = rand() % agents.size();
+               while (b_ind == i || b_ind == a_ind) b_ind = rand() % agents.size();
+               while (c_ind == i || c_ind == a_ind || c_ind == b_ind) c_ind = rand() % agents.size();
                 // генерация возможной новой особи
-                vector<double> y(agents[0].size());
+
                 
                 for (int pos = 0; pos < agents[0].size(); pos++){
                     double r = getRandomValue(0,1);
@@ -636,29 +654,374 @@ class DE{
                     else
                         y[pos] = agents[i][pos];
                 }
-
                 // проверка новой особи
                 std::pair<double, vector<double>> pr = obj.metric(y);
                 if (pr.first > fitness[i]){
                     fitness[i] = pr.first;
                     agents[i] = pr.second;
+                    if (fitness[i] > best_agent_fitness){
+                        best_agent_fitness = fitness[i];
+                        best_agent = agents[i];
+                    }
                 }
             }
         }
 
-        // поиск лучшего агента
-        double best_agent_fitness = 0;
-        vector <double> best_agent;
-        for (int i = 0; i < agents.size(); i++){
+//        // поиск лучшего агента
+//        double best_agent_fitness = 0;
+//        vector <double> best_agent;
+//        for (int i = 0; i < agents.size(); i++){
+//            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+//            agents[i] = pr.second;
+//            fitness[i] = pr.first;
+//            if (fitness[i] > best_agent_fitness){
+//                best_agent_fitness = fitness[i];
+//                best_agent = agents[i];
+//            }
+//        }
+        std::pair<double,vector<double>> to_ret = std::make_pair(best_agent_fitness,best_agent);
+        return to_ret;
+    }
+};
+
+class SSA{
+    /*
+    *   Класс метаэвристики SSA
+        Задается параметрами:
+        population_size - размер популяции, по которой нужно итерироваться
+        num_iterations - количество поколений, в течение которых выполняется оптимизация метрики
+        num_features - количество значений в каждой особи
+        population - популяция, с которой нужно будет работать
+    */
+private:
+    int searching;
+    int num_salps; // population_size
+    int num_iterations;
+    int num_dimensions; // num_features
+    std::vector<std::vector<double>> salps; // Reference to the population used for Metric
+
+public:
+    SSA(const std::vector<std::vector<double>>& initial_population,int searching, int num_salps, int num_iterations, int num_dimensions)
+            : searching(searching), num_salps(num_salps), num_iterations(num_iterations), num_dimensions(num_dimensions),salps(initial_population) {
+    }
+
+    std::pair<double, vector<double>> optimize(Metric& obj) {
+        /*
+            Функция реализует оптимизацию метрики с помощью метаэвристики SCA
+            На входе - объект класса метрики, flag - встраиваем 1 бит или несколько (для встраивания бит-флага 0)
+            На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
+        */
+        const std::pair<double, double> search_space(static_cast<double>(-searching),static_cast<double>(searching));
+        // Calculate fitness for each salp
+        std::vector<double> fitness(num_salps);
+        for (int i = 0; i < num_salps; ++i) {
+            std::pair<double, vector<double>> pr = obj.metric(salps[i]);
+            salps[i] = pr.second;
+            fitness[i] = pr.first;
+        }
+
+        for (int t = 0; t < num_iterations; ++t) {
+            // Get the best salp
+            int best_index = std::distance(fitness.begin(), std::max_element(fitness.begin(), fitness.end()));
+            std::vector<double> best_salp = salps[best_index];
+
+            // Update positions with adaptive parameter
+            double w = 1.0 - (static_cast<double>(t) / num_iterations);
+
+            for (int i = 0; i < num_salps; ++i) {
+                for (int j = 0; j < num_dimensions; ++j) {
+                    if (i == 0) {
+                        salps[i][j] = best_salp[j]; // The first salp follows the lead
+                    } else {
+                        // Subsequent salps follow their predecessor
+                        salps[i][j] = (salps[i][j] + salps[i - 1][j]) / 2;
+
+                        // Introduce randomization for the latter half of iterations
+                        if (t > num_iterations / 2) {
+                            salps[i][j] += w * (2.0 * static_cast<double>(std::rand()) / RAND_MAX - 1.0); // random value in [-1,1]
+                        }
+                        // Boundary check
+                        if (salps[i][j] < search_space.first) {
+                            salps[i][j] = search_space.first;
+                        } else if (salps[i][j] > search_space.second) {
+                            salps[i][j] = search_space.second;
+                        }
+                    }
+                }
+            }
+
+            // Update fitness values
+            for (int i = 0; i < num_salps; ++i) {
+                std::pair<double, vector<double>> pr = obj.metric(salps[i]);
+                salps[i] = pr.second;
+                fitness[i] = pr.first;
+            }
+        }
+
+        int best_index = std::distance(fitness.begin(), std::max_element(fitness.begin(), fitness.end()));
+        std::pair<double,vector<double>> to_ret = std::make_pair(fitness[best_index],salps[best_index]);
+        return to_ret;
+    }
+};
+
+class WOA{
+    /*
+    *   Класс метаэвристики WOA
+        Задается параметрами:
+        population_size - размер популяции, по которой нужно итерироваться
+        num_iterations - количество поколений, в течение которых выполняется оптимизация метрики
+        num_features - количество значений в каждой особи
+        population - популяция, с которой нужно будет работать
+    */
+private:
+    int num_agents;
+    int num_iterations;
+    int num_features;
+    std::vector<std::vector<double>> agents;
+    int searching;
+public:
+    WOA(const std::vector<std::vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching)
+            : num_agents(num_agents), num_iterations(num_iterations), num_features(num_features), agents(initial_population),searching(searching) {
+    }
+
+    std::pair<double, vector<double>> optimize(Metric& obj) {
+        /*
+            Функция реализует оптимизацию метрики с помощью метаэвристики WOA
+            На входе - объект класса метрики
+            На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
+        */
+
+        std::vector<double> fitness(num_agents);
+        const std::pair<double, double> search_space(static_cast<double>(-searching),static_cast<double>(searching));
+        for(int i = 0; i < num_agents; i++) {
+            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+            agents[i] = pr.second; // обновление особи после метрики, с учетом ограничений
+            fitness.push_back(pr.first);
+        }
+
+        for (int t = 0; t < num_iterations; t++) {
+            double a = 2.0 - t * ((2.0) / num_iterations);
+
+            for(int i = 0; i < num_agents; i++) {
+                double r1 = getRandomValue(0, 1);
+                double r2 = getRandomValue(0, 1);
+
+                double A = 2.0 * a * r1 - a;
+                double C = 2.0 * r2;
+
+                double b = 1;
+                double l = (getRandomValue(0, 1) * 2) - 1;
+
+                double p = getRandomValue(0, 1);
+
+                std::vector<double> X_rand = agents[getRandomValue(0, num_agents - 1)];
+
+                std::vector<double> D_X_rand(num_features);
+                std::vector<double> X_new(num_features);
+
+                if(p < 0.5) {
+                    if(std::fabs(A) < 1) {
+                        for(int j = 0; j < num_features; j++) {
+                            D_X_rand[j] = std::fabs(C * X_rand[j] - agents[i][j]);
+                            X_new[j] = X_rand[j] - A * D_X_rand[j];
+                        }
+                    } else {
+                        for(int j = 0; j < num_features; j++) {
+                            X_new[j] = X_rand[j] - A * std::fabs(C * X_rand[j] - agents[i][j]);
+                        }
+                    }
+                } else {
+                    for(int j = 0; j < num_features; j++) {
+                        D_X_rand[j] = std::fabs(X_rand[j] - agents[i][j]);
+                        X_new[j] = D_X_rand[j] * std::exp(b * l) * std::cos(2 * M_PI * l) + X_rand[j];
+                    }
+                }
+
+                for(int j = 0; j < num_features; j++) {
+                    X_new[j] = std::clamp(X_new[j], search_space.first, search_space.second);
+                }
+
+                std::pair<double, vector<double>> pr  = obj.metric(X_new);
+                if(pr.first > fitness[i]) {
+                    agents[i] = pr.second;
+                    fitness[i] = pr.first;
+                }
+            }
+        }
+
+        auto max_element_iter = std::max_element(fitness.begin(), fitness.end());
+        int best_index = std::distance(fitness.begin(), max_element_iter);
+        std::pair<double,vector<double>> to_ret = std::make_pair(fitness[best_index],agents[best_index]);
+        return to_ret;
+    }
+};
+
+class ICA{
+    /*
+    *   Класс метаэвристики ICA
+        Задается параметрами:
+        population_size - размер популяции, по которой нужно итерироваться
+        num_iterations - количество поколений, в течение которых выполняется оптимизация метрики
+        num_features - количество значений в каждой особи
+        population - популяция, с которой нужно будет работать
+    */
+private:
+    int num_agents;
+    int num_iterations;
+    int num_features;
+    std::vector<std::vector<double>> agents;
+    int searching;
+    int num_empires;
+public:
+    ICA(const std::vector<std::vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching, int num_empires)
+            : num_agents(num_agents), num_iterations(num_iterations), num_features(num_features), agents(initial_population),searching(searching),num_empires(num_empires) {
+    }
+
+    std::pair<double, vector<double>> optimize(Metric& obj) {
+        /*
+            Функция реализует оптимизацию метрики с помощью метаэвристики ICA
+            На входе - объект класса метрики
+            На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
+        */
+        std::vector<double> fitness(num_agents);
+        for (int i = 0; i < num_agents; ++i) {
             std::pair<double, vector<double>> pr = obj.metric(agents[i]);
             agents[i] = pr.second;
             fitness[i] = pr.first;
-            if (fitness[i] > best_agent_fitness){
-                best_agent_fitness = fitness[i];
-                best_agent = agents[i];
+        }
+
+        std::vector<int> sorted_indices(num_agents);
+        std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
+        std::sort(sorted_indices.begin(), sorted_indices.end(), [&fitness](int i1, int i2) { return fitness[i1] > fitness[i2]; });
+
+        std::vector<std::vector<double>> empires(num_empires);
+        std::vector<std::vector<double>> colonies(num_agents - num_empires);
+        std::vector<double> empire_fitness(num_empires);
+        std::vector<double> colony_fitness(num_agents - num_empires);
+
+        for (int i = 0; i < num_empires; ++i) {
+            empires[i] = agents[sorted_indices[i]];
+            empire_fitness[i] = fitness[sorted_indices[i]];
+        }
+        for (int i = 0; i < colonies.size(); ++i) {
+            colonies[i] = agents[sorted_indices[i + num_empires]];
+            colony_fitness[i] = fitness[sorted_indices[i + num_empires]];
+        }
+
+        // Инициализация адаптивных скоростей обучения и коэффициентов ассимиляции
+        double learning_rate_init = 0.5;
+        double learning_rate_final = 0.01;
+        double assimilation_coeff_init = 0.5;
+        double assimilation_coeff_final = 0.1;
+
+        for (int t = 0; t < num_iterations; ++t) {
+            double assimilation_coeff = assimilation_coeff_init - (assimilation_coeff_init - assimilation_coeff_final) * static_cast<double>(t) / num_iterations;
+            double learning_rate = learning_rate_init - (learning_rate_init - learning_rate_final) * static_cast<double>(t) / num_iterations;
+
+            // Осуществляем скрещивание между империями
+            for (int i = 0; i < num_empires; ++i) {
+                if (static_cast<double>(std::rand()) / RAND_MAX < 0.5) {
+                    int other = std::rand() % num_empires;
+                    std::vector<double> child(num_features);
+                    for (int j = 0; j < num_features; ++j) {
+                        child[j] = 0.5 * (empires[i][j] + empires[other][j]);
+                    }
+                    std::pair<double, vector<double>> pr  = obj.metric(child);
+                    if (pr.first > empire_fitness[i]) {
+                        empires[i] = pr.second;
+                        empire_fitness[i] = pr.first;
+                    }
+                }
+            }
+
+            // Обновление позиций колоний на основе их соответствующих империй
+            for (int i = 0; i < colonies.size(); ++i) {
+                for (int j = 0; j < num_features; ++j) {
+                    colonies[i][j] -= learning_rate * assimilation_coeff * (colonies[i][j] - empires[i % num_empires][j]);
+                }
+            }
+
+            // Осуществляем революцию, внося случайные возмущения
+            for (int i = 0; i < colonies.size(); ++i) {
+                for (int j = 0; j < num_features; ++j) {
+                    colonies[i][j] += 0.2 * static_cast<double>(rand()) / RAND_MAX;
+                }
+            }
+
+            // Обновление приспособленности всех агентов
+            for (int i = 0; i < num_empires; ++i) {
+                std::pair<double, vector<double>> pr  = obj.metric(empires[i]);
+                empire_fitness[i] = pr.first;
+                empires[i] = pr.second;
+            }
+            for (int i = 0; i < colonies.size(); ++i) {
+                std::pair<double, vector<double>> pr  = obj.metric(colonies[i]);
+                colony_fitness[i] = pr.first;
+                colonies[i] = pr.second;
+            }
+
+            // Поиск лучшей империи
+            int best_index = std::distance(empire_fitness.begin(), std::max_element(empire_fitness.begin(), empire_fitness.end()));
+            auto best_agent = empires[best_index];
+            double best_fitness = empire_fitness[best_index];
+                                                   }
+
+        int best_index = std::distance(empire_fitness.begin(), std::max_element(empire_fitness.begin(), empire_fitness.end()));;
+        std::pair<double,vector<double>> to_ret = std::make_pair(empire_fitness[best_index],empires[best_index]);
+        return to_ret;
+    }
+}; // num_empires??
+
+class AOA{
+    /*
+    *   Класс метаэвристики AOA
+        Задается параметрами:
+        population_size - размер популяции, по которой нужно итерироваться
+        num_iterations - количество поколений, в течение которых выполняется оптимизация метрики
+        num_features - количество значений в каждой особи
+        population - популяция, с которой нужно будет работать
+    */
+private:
+    int num_agents;
+    int num_iterations;
+    int num_features;
+    std::vector<std::vector<double>> agents;
+    int searching;
+public:
+    AOA(const std::vector<std::vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching)
+            : num_agents(num_agents), num_iterations(num_iterations), num_features(num_features), agents(initial_population),searching(searching) {
+    }
+
+    std::pair<double, vector<double>> optimize(Metric& obj) {
+        /*
+            Функция реализует оптимизацию метрики с помощью метаэвристики AOA
+            На входе - объект класса метрики
+            На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
+        */
+        std::pair<double,double> search(static_cast<double>(-searching),static_cast<double>(searching));
+        std::vector<double> fitness(num_agents);
+        for (int i = 0; i < num_agents; ++i) {
+            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+            agents[i] = pr.second;
+            fitness[i] = pr.first;
+        }
+        // Основной цикл оптимизации
+        for (int t = 0; t < num_iterations; t++) {
+            double time_ratio = static_cast<double>(t) / num_iterations;
+
+            for (int i = 0; i < num_agents; i++) {
+                std::vector<double> new_position = updatePosition(agents[i], time_ratio, search);
+                std::pair<double, vector<double>> pr  = obj.metric(new_position);
+                if (pr.first > fitness[i]) {
+                    agents[i] = pr.second;
+                    fitness[i] = pr.first;
+                }
             }
         }
-        std::pair<double,vector<double>> to_ret = std::make_pair(best_agent_fitness,best_agent);
+
+        auto max_element_iter = std::max_element(fitness.begin(), fitness.end());
+        int best_index = std::distance(fitness.begin(), max_element_iter);
+        std::pair<double,vector<double>> to_ret = std::make_pair(fitness[best_index],agents[best_index]);
         return to_ret;
     }
 };
@@ -714,276 +1077,255 @@ double ssim(std::vector<std::vector<int>> original_img,std::vector<std::vector<i
 
 
 int main() {
-    // int mode; // выбор режима - встраивание\извлечение
-    // cin >> mode;
-    // string picture;
-    // cin >> picture;
-    //  
+
     vector <string> pictures{
+    "peppers512.png","lena512.png",
     "airplane512.png","baboon512.png","barbara512.png",
     "boat512.png","goldhill512.png","stream_and_bridge512.png"
     };
-    for (int i = 0; i < pictures.size(); i++){
 
-    string picture = pictures[i]; 
-    cout << picture << ' ';
-    const string directoryPath = picture + "tlbo";
-    // Create the directory using mkdir
-    int status = CreateDirectory(directoryPath.c_str(), NULL);
-    int mode = 3;
-    if (mode == 1){ // встраивание
-        const int SEARCH_SPACE = 10; // пространство поиска
+    vector <string> metaheu{
+        "sca","tlbo","ica","aoa","ssa","woa","de"
+    };
 
-        //открытие файла, что нужно встроить 
-        ifstream inputFile("to_embed.txt");
-        int ind_information = 0;
-        string information;
-        getline(inputFile,information);
-        inputFile.close();
-        
-        //открытие картинки
-        cv::Mat image = cv::imread(picture, cv::IMREAD_GRAYSCALE);
-        int rows = image.rows;
-        int cols = image.cols;
-        std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
+    for (int m4 = 0; m4 < metaheu.size(); m4++) {
+        string METAHEURISTIC = metaheu[m4];
+        cout << METAHEURISTIC << '\n';
+        for (int i = 0; i < pictures.size(); i++) {
 
-        // трансформация из формата <Mat> в <vector>
-        for (int i = 0; i < rows; i++) 
-            for (int j = 0; j < cols; j++) 
-                img[i][j] = static_cast<int>(image.at<uchar>(i, j));
+            string picture = pictures[i];
+            cout << picture << ' ';
+            const string directoryPath = picture + METAHEURISTIC;
+            // Create the directory using mkdir
+            int status = std::system(("mkdir " + std::string(directoryPath)).c_str());
+            int mode = 1;
+            if (mode == 1) { // встраивание
+                const int SEARCH_SPACE = 10; // пространство поиска
 
-        //генерация порядка блоков, сохранение их в файл 
-        vector <int> blocks = generate_blocks(rows*cols/64);
-        std::ofstream outputFile(picture + "de/blocks.txt");
-        cout << 1;
-        for (int num: blocks)
-            outputFile << num << ' ';
-        outputFile.close();
+                //открытие файла, что нужно встроить
+                ifstream inputFile("to_embed.txt");
+                int ind_information = 0;
+                string information;
+                getline(inputFile, information);
+                inputFile.close();
+                //открытие картинки
+                cv::Mat image = cv::imread(picture, cv::IMREAD_GRAYSCALE);
+                int rows = image.rows;
+                int cols = image.cols;
+                std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
 
-        vector<vector<int>> copy_img = img;
-        int cnt1 = 0;
-        int cnt_blocks = 0;
+                // трансформация из формата <Mat> в <vector>
+                for (int i = 0; i < rows; i++)
+                    for (int j = 0; j < cols; j++)
+                        img[i][j] = static_cast<int>(image.at<uchar>(i, j));
 
-        //std::ofstream outputInfo("allinfo.txt");
+                //генерация порядка блоков, сохранение их в файл
+                vector<int> blocks = generate_blocks(rows * cols / 64);
+                std::ofstream outputFile(picture + METAHEURISTIC + "/blocks.txt");
+                for (int num: blocks)
+                    outputFile << num << ' ';
+                outputFile.close();
 
-        for (int i : blocks){
-            //cout <<endl << cnt_blocks++ << ' ' << endl;
-            //получаем блок изображения по известному номера блока
-            int block_w = i % (rows / 8);
-            int block_h = (i - block_w) / (rows / 8);
-            vector <vector<int>> pixel_matrix(8,vector<int>(8));
-            for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++)
-                for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++)
-                    pixel_matrix[i1-block_h * 8][i2-block_w*8] = img[i1][i2];
+                vector<vector<int>> copy_img = img;
+                int cnt1 = 0;
+                int cnt_blocks = 0;
 
-            //матрица до изменений
-            // for (const auto& row : pixel_matrix) {
-            // for (const int value : row) {
-            //     outputInfo << value << ' ';
-            // }
-            // outputInfo << '\n';
-            // }
+                for (int i: blocks) {
+                    cout << endl << cnt_blocks++ << ' ' << endl;
+                    //получаем блок изображения по известному номера блока
+                    int block_w = i % (rows / 8);
+                    int block_h = (i - block_w) / (rows / 8);
+                    vector<vector<int>> pixel_matrix(8, vector<int>(8));
+                    for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++)
+                        for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++)
+                            pixel_matrix[i1 - block_h * 8][i2 - block_w * 8] = img[i1][i2];
 
-            //трансформация из пикселей в DCT-coef
-            vector<vector<double>> dct_matrix;
-            dct_matrix = do_dct(pixel_matrix);
+                    //трансформация из пикселей в DCT-coef
+                    vector<vector<double>> dct_matrix;
+                    dct_matrix = do_dct(pixel_matrix);
 
-            //встраивание информации в DCT-coef блок
-            dct_matrix = embed_to_dct(dct_matrix, string(1, '1') + information.substr(ind_information, 31));
+                    //встраивание информации в DCT-coef блок
+                    dct_matrix = embed_to_dct(dct_matrix, string(1, '1') + information.substr(ind_information, 31));
 
-            //перевод блока из DCT-coef в пиксельный формат
-            vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
+                    //перевод блока из DCT-coef в пиксельный формат
+                    vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
 
-            //генерация популяции на основе блока после встраивания и изначального
-            vector<vector<double>> population = generate_population(pixel_matrix,new_pixel_matrix,128,double(0.9),SEARCH_SPACE);
+                    //генерация популяции на основе блока после встраивания и изначального
+                    vector<vector<double>> population = generate_population(pixel_matrix, new_pixel_matrix, 128,
+                                                                            double(0.9), SEARCH_SPACE);
 
-            //задаем объект метрики для данного блока и информации для встраивания
-            Metric metric(pixel_matrix,string(1, '1') + information.substr(ind_information, 31), SEARCH_SPACE, 'A');
-
-            //выбор метаэвристики и оптимизации с помощью нее
-            //TLBO meta(population,128,128,64);
-            //SCA meta(population,128,128,64);
-            DE meta(population,128,128,64);
-            pair <double,vector<double>> solution = meta.optimize(metric);
-
-            if (solution.first > 1){ // значение кач-ва метрики >1 => информация встроена идеально, сохранем новый блок, добавляя к нему матрицу изменений
-                cnt1 += 1; 
-                int ind = 0;
-                for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++){
-                    for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++){
-                        copy_img[i1][i2] -= solution.second[ind];
-                        ind++;
+                    //задаем объект метрики для данного блока и информации для встраивания
+                    Metric metric(pixel_matrix, string(1, '1') + information.substr(ind_information, 31), SEARCH_SPACE,
+                                  'A');
+                    //выбор метаэвристики и оптимизации с помощью нее
+                    pair<double, vector<double>> solution;
+                    if (METAHEURISTIC == "tlbo") {
+                        TLBO meta(population, 128, 128, 64);
+                        solution = meta.optimize(metric);
                     }
+                    else if(METAHEURISTIC == "sca") {
+                        SCA meta(population, 128, 128, 64);
+                        solution = meta.optimize(metric);
+                    }
+                    else if(METAHEURISTIC == "de") {
+                        DE meta(population, 128, 128, 64);
+                        solution = meta.optimize(metric);
+                    }
+                    else if (METAHEURISTIC == "ssa") {
+                        SSA meta(population, SEARCH_SPACE, 128, 128, 64);
+                        solution = meta.optimize(metric);
+                    }
+                    else if (METAHEURISTIC == "woa") {
+                        WOA meta(population, 128, 128, 64, SEARCH_SPACE);
+                        solution = meta.optimize(metric);
+                    }
+                    else if (METAHEURISTIC == "aoa") {
+                        AOA meta(population, 128, 128, 64, SEARCH_SPACE);
+                        solution = meta.optimize(metric);
+                    }
+                    else if (METAHEURISTIC == "ica") {
+                        ICA meta(population, 128, 128, 64, SEARCH_SPACE, 10);
+                        solution = meta.optimize(metric);
+                    }
+                    //pair<double, vector<double>> solution = meta.optimize(metric);
+
+                    if (solution.first > 1) { // значение кач-ва метрики >1 => информация встроена идеально, сохраняем новый блок, добавляя к нему матрицу изменений
+                        cnt1 += 1;
+                        int ind = 0;
+                        for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++) {
+                            for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++) {
+                                copy_img[i1][i2] -= solution.second[ind];
+                                ind++;
+                            }
+                        }
+
+                        vector<vector<int>> new_pixel_matrix_1(8, vector<int>(8));
+                        for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++)
+                            for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++)
+                                new_pixel_matrix_1[i1 - block_h * 8][i2 - block_w * 8] = copy_img[i1][i2];
+
+                        ind_information += 31; // переход к следующей части информации
+                    } else { // информация встроена неидеально
+                        cout << solution.first;
+                        int searching = 5;
+                        // встраиваем 1 бит - 0
+                        dct_matrix = embed_to_dct(do_dct(pixel_matrix), string(1, '0'), 'Z');
+
+                        // перевод из DCT-coef в пиксели
+                        vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
+
+                        //генерация популяции
+                        vector<vector<double>> population = generate_population(pixel_matrix, new_pixel_matrix, 128,
+                                                                                double(0.9), searching);
+
+                        //создание объекта метрики, с учетом встраивание 1 бита
+                        Metric metric(pixel_matrix, string(1, '0'), searching, 'Z');
+
+                        // оптимизация с помощью метаэвристики SCA
+                        SCA sca(population, 128, 128, 64);
+                        pair<double, vector<double>> solution = sca.optimize(metric, 1);
+
+                        for (int i1 = 0; i1 < 64; i1++)
+                            cout << solution.second[i1] << ' ';
+                        //сохраняем блок, в который не встраивалась информация
+                        int ind = 0;
+                        for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++)
+                            for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++)
+                                copy_img[i1][i2] -= solution.second[ind++];
+                    }
+
                 }
-            //матрица после изменений
-            // outputInfo << '\n';
-            // for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++){
-            //     for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++){
-            //     outputInfo << copy_img[i1][i2] << ' ';
-            // }
-            // outputInfo << '\n';
-            // }
-            // //матрица изменений
-            // outputInfo << '\n';
-            // for (int i1 = 0; i1 < solution.second.size();i1++)
-            //     outputInfo << solution.second[i1] << ' ';
 
+                //сохраняем изображение
+                cv::Mat imageMat(rows, cols, CV_8UC1);
+                for (int row = 0; row < rows; row++)
+                    for (int col = 0; col < cols; col++)
+                        imageMat.at<uchar>(row, col) = static_cast<uchar>(copy_img[row][col]);
+                std::string outputFilePath = picture + METAHEURISTIC + "/saved.png";
+                bool success = cv::imwrite(outputFilePath, imageMat);
 
-            vector <vector <int>> new_pixel_matrix_1(8,vector<int>(8));
-            for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++)
-                for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++)
-                    new_pixel_matrix_1[i1-block_h*8][i2-block_w*8] = copy_img[i1][i2];
-
-            //string s2 = string(1, '1') + information.substr(ind_information, 31);
-            //информация встроенная
-            //outputInfo << '\n' << s2 << '\n' << "---------------------" << '\n';
-            ind_information += 31; // переход к следующей части информации
+                cout << cnt1;
             }
+            mode = 2;
+            if (mode == 2) { // извлечение
+                string bit_string = "";
 
-            else{ // информация встроена неидеально
-                cout << solution.first;
-                int searching = 5;
-                // встраиваем 1 бит - 0
-                dct_matrix = embed_to_dct(do_dct(pixel_matrix), string(1, '0'), 'Z');
+                //открываем изображение
+                cv::Mat image = cv::imread(picture + METAHEURISTIC + "/saved.png", cv::IMREAD_GRAYSCALE);
+                int rows = image.rows;
+                int cols = image.cols;
+                std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
 
-                // перевод из DCT-coef в пиксели
-                vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
+                // переводим из формата <Mat> в <vector>
+                for (int i = 0; i < rows; i++)
+                    for (int j = 0; j < cols; j++)
+                        img[i][j] = static_cast<int>(image.at<uchar>(i, j));
 
-                //генерация популяции
-                vector<vector<double>> population = generate_population(pixel_matrix,new_pixel_matrix,128,double(0.9),searching);
+                // открываем файл с порядком блоков
+                std::ifstream inputFile(picture + METAHEURISTIC + "/blocks.txt");
+                std::vector<int> blocks;
+                int num;
+                while (inputFile >> num) {
+                    blocks.push_back(num);
+                }
+                inputFile.close();
+                for (int i: blocks) {
+                    // получаем значения блока изображения по прочитанному номеру блоку
+                    int block_w = i % (rows / 8);
+                    int block_h = (i - block_w) / (rows / 8);
+                    vector<vector<int>> pixel_matrix(8, vector<int>(8));
+                    for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++)
+                        for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++)
+                            pixel_matrix[i1 - block_h * 8][i2 - block_w * 8] = img[i1][i2];
 
-                //создание объекта метрики, с учетом встраивание 1 бита
-                Metric metric(pixel_matrix,string(1, '0'), searching, 'Z');
+                    // извлекаем информацию из блока
+                    string s = extracting_dct(pixel_matrix);
+                    if (s != "0") // информация должна быть извлечена
+                        bit_string += s.substr(1);
+                }
+                // сохраняем извлеченную информацию в файл
+                std::ofstream outputFile(picture + METAHEURISTIC + "/saved.txt");
+                outputFile << bit_string;
+                outputFile.close();
 
-                // оптимизация с помощью метаэвристики SCA
-                SCA sca(population,128,128,64);
-                pair <double,vector<double>> solution = sca.optimize(metric,1);
-
-                for (int i1 = 0; i1< 64; i1++)
-                        cout << solution.second[i1] <<' ';
-                //сохраняем блок, в который не встраивалась информация 
-                int ind = 0;
-                for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++)
-                    for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++)
-                        copy_img[i1][i2] -= solution.second[ind++];
+                // октрываем изначальное изображение и считаем метрику psnr между изначальным и получившимся
+                cv::Mat image_base = cv::imread(picture, cv::IMREAD_GRAYSCALE);
+                rows = image_base.rows;
+                cols = image_base.cols;
+                std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
+                for (int i = 0; i < rows; i++)
+                    for (int j = 0; j < cols; j++)
+                        img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
+                cout << psnr(img_base, img) << ' ' << ssim(img_base, img) << '\n';
             }
-            
+            else {
+                //открываем изображение
+                string route;
+                //cin >> route;
+                route = directoryPath + "/saved.png";
+                cv::Mat image = cv::imread(route, cv::IMREAD_GRAYSCALE);
+                int rows = image.rows;
+                int cols = image.cols;
+                std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
+
+                // переводим из формата <Mat> в <vector>
+                for (int i = 0; i < rows; i++)
+                    for (int j = 0; j < cols; j++)
+                        img[i][j] = static_cast<int>(image.at<uchar>(i, j));
+
+                cv::Mat image_base = cv::imread(picture, cv::IMREAD_GRAYSCALE);
+                rows = image_base.rows;
+                cols = image_base.cols;
+                std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
+                for (int i = 0; i < rows; i++)
+                    for (int j = 0; j < cols; j++)
+                        img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
+
+                std::ifstream inputFile(directoryPath + "/saved.txt");
+                std::string line;
+                std::getline(inputFile, line);
+                cout << psnr(img_base, img) << ' ' << ssim(img_base, img) << ' ' << line.length() << '\n';
+            }
         }
-        
-        // // Открываем файл для записи
-        // std::ofstream outputFile1("matrix.txt");
-
-        // // Записываем значения из вектора в файл
-        // for (const auto& row : copy_img) {
-        //     for (const int value : row) {
-        //         outputFile1 << value << ' ';
-        //     }
-        //     outputFile1 << '\n';
-        // }
-
-        // // Закрываем файл
-        // outputFile1.close();
-
-        //сохраняем изображение
-        cv::Mat imageMat(rows, cols, CV_8UC1);
-        for (int row = 0; row < rows; row++) 
-            for (int col = 0; col < cols; col++) 
-                imageMat.at<uchar>(row, col) = static_cast<uchar>(copy_img[row][col]);
-        std::string outputFilePath = picture + "de/saved.png";
-        bool success = cv::imwrite(outputFilePath, imageMat);
-
-
-        cout << cnt1;
     }
-    mode = 3;
-    if (mode == 2){ // извлечение
-        string bit_string = "";
-
-        //открываем изображение
-        cv::Mat image = cv::imread(picture + "de/saved.png", cv::IMREAD_GRAYSCALE);
-        int rows = image.rows;
-        int cols = image.cols;
-        std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
-
-        // переводим из формата <Mat> в <vector>
-        for (int i = 0; i < rows; i++) 
-            for (int j = 0; j < cols; j++) 
-                img[i][j] = static_cast<int>(image.at<uchar>(i, j));
-        
-        // // Открываем файл для записи
-        // std::ofstream outputFile2("matrix_save.txt");
-
-        // // Записываем значения из вектора в файл
-        // for (const auto& row : img) {
-        //     for (const int value : row) {
-        //         outputFile2 << value << ' ';
-        //     }
-        //     outputFile2 << '\n';
-        // }
-
-        // // Закрываем файл
-        // outputFile2.close();
-
-        // открываем файл с порядком блоков
-        std::ifstream inputFile(picture + "de/blocks.txt");
-        std::vector<int> blocks;
-        int num;
-        while (inputFile >> num) {
-            blocks.push_back(num);
-        }
-        inputFile.close();
-        for (int i : blocks){
-            // получаем значения блока изображения по прочитанному номеру блоку
-            int block_w = i % (rows / 8);
-            int block_h = (i - block_w) / (rows / 8);
-            vector <vector<int>> pixel_matrix(8,vector<int>(8));
-            for (int i1 = block_h * 8 ;i1 < block_h * 8 + 8; i1++)
-                for (int i2 = block_w * 8;i2 < block_w * 8 + 8; i2++)
-                    pixel_matrix[i1-block_h * 8][i2-block_w*8] = img[i1][i2];
-
-            // извлекаем информацию из блока
-            string s = extracting_dct(pixel_matrix);
-            if (s != "0") // информация должна быть извлечена
-                bit_string += s.substr(1);
-        }
-        // сохраняем извлеченную информацию в файл
-        std::ofstream outputFile(picture + "de/saved.txt");
-        outputFile << bit_string;
-        outputFile.close(); 
-
-        // октрываем изначальное изображение и считаем метрику psnr между изначальным и получившимся
-        cv::Mat image_base = cv::imread(picture, cv::IMREAD_GRAYSCALE);
-        rows = image_base.rows;
-        cols = image_base.cols;
-        std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
-        for (int i = 0; i < rows; i++) 
-            for (int j = 0; j < cols; j++) 
-                img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
-        cout << psnr(img_base,img) << ' '<< ssim(img_base,img) << '\n';
-    }
-    else{
-        //открываем изображение
-        string route; 
-        //cin >> route;
-        route = directoryPath + "/saved.png";
-        cv::Mat image = cv::imread(route, cv::IMREAD_GRAYSCALE);
-        int rows = image.rows;
-        int cols = image.cols;
-        std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
-
-        // переводим из формата <Mat> в <vector>
-        for (int i = 0; i < rows; i++) 
-            for (int j = 0; j < cols; j++) 
-                img[i][j] = static_cast<int>(image.at<uchar>(i, j));
-
-        cv::Mat image_base = cv::imread(picture, cv::IMREAD_GRAYSCALE);
-        rows = image_base.rows;
-        cols = image_base.cols;
-        std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
-        for (int i = 0; i < rows; i++) 
-            for (int j = 0; j < cols; j++) 
-                img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
-        cout << psnr(img_base,img) << ' '<< ssim(img_base,img) << '\n';
-    }
-}
 }
