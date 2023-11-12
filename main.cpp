@@ -21,13 +21,13 @@ vector <int> generate_blocks(int size){
     for (int i = 0; i < size; i++) {
         permutation.push_back(i);
     }   
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::shuffle(permutation.begin(), permutation.end(), gen);
+    random_device rd;
+    mt19937 gen(rd());
+    shuffle(permutation.begin(), permutation.end(), gen);
     return permutation;
 }
 
-std::vector<std::vector<double>> do_dct(const std::vector<std::vector<int>>& input) {
+vector<vector<double>> do_dct(const vector<vector<int>>& input) {
     /*
         Функция преобразует значения пикселей в DCT-coef
         На вход принимается блок изображения
@@ -35,33 +35,29 @@ std::vector<std::vector<double>> do_dct(const std::vector<std::vector<int>>& inp
     */
 
     // Перевод из формата <vector> в формат <Mat>
-    cv::Mat inputMat(input.size(), input[0].size(), CV_32S);
+    cv::Mat floatInput(input.size(), input[0].size(), CV_64FC1); //CV_64FC1 WAS
     for (size_t i = 0; i < input.size(); i++) {
         for (size_t j = 0; j < input[0].size(); j++) {
-            inputMat.at<int>(i, j) = input[i][j];
+            floatInput.at<double>(i, j) = static_cast<double>(input[i][j]);
         }
     }
-
-    // Конвертируем матрицу <Mat> в float
-    cv::Mat floatInput;
-    inputMat.convertTo(floatInput, CV_32F);
 
     // Преобразование матрицы в DCT-coef
     cv::Mat dctResult;
     cv::dct(floatInput, dctResult);
 
     // Сохранение матрицы в виде вектора, вывод вектора
-    std::vector<std::vector<double>> output(dctResult.rows, std::vector<double>(dctResult.cols));
+    vector<vector<double>> output(dctResult.rows, vector<double>(dctResult.cols));
     for (int i = 0; i < dctResult.rows; i++) {
         for (int j = 0; j < dctResult.cols; j++) {
-            output[i][j] = dctResult.at<float>(i, j);
+            output[i][j] = dctResult.at<double>(i, j);
         }
     }
 
     return output;
 }
 
-std::vector<std::vector<int>> undo_dct(const std::vector<std::vector<double>>& dctCoefficients) {
+vector<vector<int>> undo_dct(const vector<vector<double>>& dctCoefficients) {
     /*
         Функция преобразует DCT-coef обратно в пиксели
         На вход получаем блок DCT-coef
@@ -69,7 +65,7 @@ std::vector<std::vector<int>> undo_dct(const std::vector<std::vector<double>>& d
     */
 
     // Перевод из формата <vector> в формат <Mat>
-    cv::Mat dctResult(dctCoefficients.size(), dctCoefficients[0].size(), CV_64FC1);
+    cv::Mat dctResult(dctCoefficients.size(), dctCoefficients[0].size(), CV_64FC1); //CV_64FC1 WAS
     for (size_t i = 0; i < dctCoefficients.size(); i++) {
         for (size_t j = 0; j < dctCoefficients[0].size(); j++) {
             dctResult.at<double>(i, j) = dctCoefficients[i][j];
@@ -81,7 +77,7 @@ std::vector<std::vector<int>> undo_dct(const std::vector<std::vector<double>>& d
     cv::idct(dctResult, idctResult);
 
     // Конвертируем из формата <Mat> в <vector> и выводим его
-    std::vector<std::vector<int>> output(idctResult.rows, std::vector<int>(idctResult.cols));
+    vector<vector<int>> output(idctResult.rows, vector<int>(idctResult.cols));
     for (int i = 0; i < idctResult.rows; i++) {
         for (int j = 0; j < idctResult.cols; j++) {
             output[i][j] = static_cast<int>(idctResult.at<double>(i, j));
@@ -91,7 +87,7 @@ std::vector<std::vector<int>> undo_dct(const std::vector<std::vector<double>>& d
     return output;
 }
 
-std::vector<std::vector<double>> embed_to_dct(std::vector<std::vector<double>> dct_matrix, const string bit_string, const char mode = 'A', double q = 8.0){
+vector<vector<double>> embed_to_dct(vector<vector<double>> dct_matrix, const string bit_string, const char mode = 'A', double q = 8.0){
     /*
     *   Функция реализует встраивание в блок с DCT-coef
     *   На входе:
@@ -115,7 +111,7 @@ std::vector<std::vector<double>> embed_to_dct(std::vector<std::vector<double>> d
     return dct_matrix;
 }
 
-std::vector<std::vector<double>> generate_population(vector<vector<int>> original,vector<vector<int>> notorig, int population_size = 128,double beta = 0.9,int search_space = 10){
+vector<vector<double>> generate_population(vector<vector<int>> original,vector<vector<int>> notorig, int population_size = 128,double beta = 0.9,int search_space = 10){
     /*
     *   Функция генерирует популяцию для работы метаэвристик
     *   На входе:
@@ -128,12 +124,12 @@ std::vector<std::vector<double>> generate_population(vector<vector<int>> origina
     *   Функция возвращает популяцию, которая состоит из заданного числа особей
     */
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    random_device rd;
+    mt19937 gen(rd());
     double lower_bound = 0.0;
     double upper_bound = 1.0;
-    std::uniform_real_distribution<double> uniform_dist(lower_bound, upper_bound);
-    std::uniform_int_distribution<int> search_dist(-search_space, search_space);
+    uniform_real_distribution<double> uniform_dist(lower_bound, upper_bound);
+    uniform_int_distribution<int> search_dist(-search_space, search_space);
 
     // подсчитываем матрицу изменений
     vector<double> diff;
@@ -163,13 +159,61 @@ std::vector<std::vector<double>> generate_population(vector<vector<int>> origina
     return population;
 }
 
-std::vector<double> meanAlongAxis(const std::vector<std::vector<double>>& array) {
+vector<vector<double>> generate_population_dct(vector<vector<double>> original,vector<vector<double>> notorig, int population_size = 128,double beta = 0.9,int search_space = 10){
+    /*
+    *   Функция генерирует популяцию для работы метаэвристик
+    *   На входе:
+        original - блок изначального изображения
+        notorig - блок изображения после встраивание в его DCT-coef (поменялся из-за смены DCT-coef)
+        mode - выбранный тип работы, "A" - встроить 32 бита, иначе только 1 бит
+        population_size - размер популяции, сколько особей будет в ней
+        beta - с какой вероятностью берется значение разности между изначальным блоком и измененным (иначе берется рандом из пространства поиска)
+        search_space - пространство поиска, какому интервалу должны соотвествовать значения матрицы изменений
+    *   Функция возвращает популяцию, которая состоит из заданного числа особей
+    */
+
+    random_device rd;
+    mt19937 gen(rd());
+    double lower_bound = 0.0;
+    double upper_bound = 1.0;
+    uniform_real_distribution<double> uniform_dist(lower_bound, upper_bound);
+    uniform_real_distribution<double> search_dist(-search_space, search_space);
+
+    // подсчитываем матрицу изменений
+    vector<double> diff;
+    for (int i = 0; i < original.size(); i++)
+        for (int j = 0; j < original[0].size();j++)
+            diff.push_back(original[i][j]-notorig[i][j]);
+
+    vector<vector<double>> population(population_size,vector<double>(diff.size()));
+
+    // первая особь - начальная матрица изменений
+    for (int j = 0; j < diff.size(); j++)
+        population[0][j] = diff[j];
+
+    // генерируем популяцию c 0-го индекса,т.к. первая особь - начальная матрица изменений
+    for (int i = 1; i < population_size; i++){
+        for (int j = 0; j < diff.size(); j++){
+            double random_value = uniform_dist(gen);
+            if (random_value > beta){ // если рандом больше вероятности, то заместо значения из матрицы изменений выбираем рандомное
+                int random_search = search_dist(gen);
+                population[i][j] = random_search;
+            }
+            else{
+                population[i][j] = diff[j];
+            }
+        }
+    }
+    return population;
+}
+
+vector<double> meanAlongAxis(const vector<vector<double>>& array) {
     /*
         Функция считает среднее по всем столбцам популяции
         На входе - популяция
         На выходе - вектор средних значения по столбцам
     */
-    std::vector<double> meanValues(array[0].size(), 0.0);
+    vector<double> meanValues(array[0].size(), 0.0);
 
     for (int j = 0; j < array[0].size(); j++) {
         double sum = 0.0;
@@ -184,14 +228,14 @@ std::vector<double> meanAlongAxis(const std::vector<std::vector<double>>& array)
 
 double getRandomInteger(int search_space) {
     // Функция генерирует случайное целое число
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::uniform_int_distribution<int> distribution(-search_space, search_space);
+    random_device rd;
+    mt19937 rng(rd());
+    uniform_int_distribution<int> distribution(-search_space, search_space);
     int randomInteger = distribution(rng);
     return double(randomInteger);
 }
 
-std::string extracting_dct(std::vector<std::vector<int>> pixel_block, double q = 8.0){
+string extracting_dct(vector<vector<int>> pixel_block, double q = 8.0){
     /*
     *   Функция реализует извлечение встроенной информации из блока 
     *   На входе:
@@ -199,8 +243,7 @@ std::string extracting_dct(std::vector<std::vector<int>> pixel_block, double q =
         q - заданный шаг квантования еще при встраивании, такой же при извлечении
     *   Функция возвращает строку - извлеченная информация
     */
-
-    vector <vector<double>> dct_block = do_dct(pixel_block); // перевод блока в DCT-coef
+    vector <vector<double>> dct_block = do_dct(pixel_block);
     string s;
     int cntj = 6;
 
@@ -233,16 +276,17 @@ class Metric{
         mode - встраиваем 1 или несколько бит
     */
     private:
-    std::vector<std::vector<int>> block_matrix;
-    std::string bit_string;
+    vector<vector<int>> block_matrix;
+    string bit_string;
     int search_space;
     char mode;
+    string method;
 
     public: 
-    Metric(const std::vector<std::vector<int>>& block_matrix, const std::string& bit_string, const int& search_space, const char& mode)
-        : block_matrix(block_matrix), bit_string(bit_string), search_space(search_space), mode(mode) {}
+    Metric(const vector<vector<int>>& block_matrix, const string& bit_string, const int& search_space, const char& mode,const string method)
+        : block_matrix(block_matrix), bit_string(bit_string), search_space(search_space), mode(mode) , method(method){}
 
-    std::pair<double, vector<double>> metric(const std::vector<double>& block, int q = 8) {
+    pair<double, vector<double>> metric(const vector<double>& block, int q = 8) {
         /*
         *   Функция реализует подсчет значения качества для данного блока
         *   На входе:
@@ -253,32 +297,63 @@ class Metric{
 
         // New_block - блок после добавлениня к нему матрицы изменений
         // block_flatten - особь, у которой отбросили остаток и проверили на выход за пространство поиска
-        std::vector<vector<int>> new_block = block_matrix;
-        vector<double> block_flatten = block; 
+        vector<vector<int>> new_block = block_matrix;
+        vector<double> block_flatten = block;
+        vector<vector<double>> dct_coef_block;
+
         for (int i = 0; i < block_flatten.size(); i++){
-            block_flatten[i] = floor(block_flatten[i]); // отброс остатка у особи
+            if (method == "spatial")
+                block_flatten[i] = floor(block_flatten[i]); // отброс остатка у особи
+
             if ((block_flatten[i] < -search_space) || (block_flatten[i] > search_space))
-                block_flatten[i] = getRandomInteger(search_space); // если значение в особи вышло за пространство - генерируем заместо него новое
+                block_flatten[i] = getRandomInteger(search_space); // если значение в особи вышло за пространство - генерируем вместо него новое
+        }
+
+        if (method == "frequency"){
+            dct_coef_block = do_dct(block_matrix);
+            vector<vector<double>> dct_coef_block1 = dct_coef_block;
+            int ind_fl = 0;
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    dct_coef_block1[i][j] -= block_flatten[ind_fl];
+                    ind_fl++;
+                }
+            }
+            new_block = undo_dct(dct_coef_block1);
         }
         //ind_f1 - индекс, идущий поэлементно в осооби
         int ind_fl = 0;
         for (int i = 0; i < 8; i++){
             for (int j = 0; j < 8; j++){
-                new_block[i][j] -= block_flatten[ind_fl];
-                if (new_block[i][j] > 255){ // выход за предел 255 в изображении, увеличиваем значение особи на разность выхода и 255
-                    int diff = abs(new_block[i][j]-255);
-                    block_flatten[ind_fl] += diff;
-                    new_block[i][j] = 255;
+                if (method == "spatial") {
+                    new_block[i][j] -= block_flatten[ind_fl];
+                    if (new_block[i][j] > 255) { // выход за предел 255 в изображении, увеличиваем значение особи на разность выхода и 255
+                        int diff = abs(new_block[i][j] - 255);
+                        block_flatten[ind_fl] += diff;
+                        new_block[i][j] = 255;
+                    }
+                    if (new_block[i][j] < 0) { // выход за предел 0, уменьшаем значение особи на значение выхода по модулю
+                        int diff = abs(new_block[i][j]);
+                        block_flatten[ind_fl] -= diff;
+                        new_block[i][j] = 0;
+                    }
+                    ind_fl++;
                 }
-                if (new_block[i][j] < 0){ // выход за предел 0, уменьшаем значение особи на значение выхода по модулю
-                    int diff = abs(new_block[i][j]);
-                    block_flatten[ind_fl] -= diff;
-                    new_block[i][j] = 0;
+                else{
+                    if (new_block[i][j] > 255)
+                        new_block[i][j] = 255;
+                    if (new_block[i][j] < 0)
+                        new_block[i][j] = 0;
                 }
-                ind_fl++;
             }
         }
+        vector<vector<double>> dct_block_ret;
         // считаем метрику качества psnr
+        if (method == "frequency") {
+            dct_block_ret = do_dct(new_block);
+
+            new_block = undo_dct(dct_block_ret);
+        }
         int sum_elem = 0;
         for (int i = 0; i < 8; i++)
             for (int j = 0; j < 8; j++)
@@ -288,31 +363,55 @@ class Metric{
             psnr = 10 * log10((pow(8,2) * pow(255,2)) / double(sum_elem));
         else
             psnr = 42;
-            
-        string s = extracting_dct(new_block);
-        if (s[0] != bit_string[0]){ // несовпадение первого извлеченного бита - нет смысла дальше проверять, возвращаем 0
-            std::pair<double, vector<double>> to_ret = std::make_pair(0.0, block_flatten);
-            return to_ret;
-        }
-        // подсчитываем кол-во бит, извлеченных правильно
+
+        string s;
+        s = extracting_dct(new_block);
         int cnt = 0;
+        if (s[0] == bit_string[0]){ // несовпадение первого извлеченного бита - нет смысла дальше проверять, возвращаем 0
+        // подсчитываем кол-во бит, извлеченных правильно
         for (int i = 0; i < s.length(); i++)
             if (s[i] == bit_string[i])
                 cnt += 1;
+        }
 
+        pair<double, vector<double>> to_ret;
         //выводим в кач-ве метрики сумму psnr*10^-4 + ber
-        std::pair<double, vector<double>> to_ret = std::make_pair(psnr/10000 + double(cnt)/double(s.length()), block_flatten);
+        if (method == "spatial")
+            to_ret = make_pair(psnr/10000 + double(cnt)/double(s.length()), block_flatten);
+        else{
+            dct_coef_block = do_dct(block_matrix);
+            vector<double> to_ret_1d_dct;
+            for (int i = 0; i < 8; i++)
+                for (int j = 0; j < 8; j++)
+                    to_ret_1d_dct.push_back(dct_coef_block[i][j] - dct_block_ret[i][j]);
+
+            int ind_fl = 0;
+            for (int i10 = 0; i10 < 8; i10++) {
+                for (int j10 = 0; j10 < 8; j10++) {
+                    dct_coef_block[i10][j10] -= to_ret_1d_dct[ind_fl];
+                    ind_fl++;
+                }
+            }
+            if (cnt == s.length()){
+                string new_s = extracting_dct(undo_dct(dct_coef_block));
+                if (new_s != s){
+                    cnt = 0;
+                    cout << new_s << ' ' << s;
+                }
+            }
+            to_ret = make_pair(psnr/10000 + double(cnt)/double(s.length()), to_ret_1d_dct);
+        }
         return to_ret;
     }
 };
 
 
-std::vector<double> getRandomArray(size_t size, double low, double high) {
+vector<double> getRandomArray(size_t size, double low, double high) {
     // Функция генерирует рандомный вектор, состоящий из нецелых чисел
-    std::vector<double> randomArray;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> distribution(low, high);
+    vector<double> randomArray;
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_real_distribution<double> distribution(low, high);
 
     for (size_t i = 0; i < size; i++) {
         randomArray.push_back(distribution(gen));
@@ -321,13 +420,13 @@ std::vector<double> getRandomArray(size_t size, double low, double high) {
     return randomArray;
 }
 
-std::vector<double> calculateDifference(const std::vector<double>& teacher, const std::vector<double>& population_mean) {
+vector<double> calculateDifference(const vector<double>& teacher, const vector<double>& population_mean) {
     // Функция подсчитывает разность между лучшей особью(учитель) и средним для популяции (метаэвристика TLBO)
     size_t num_features = teacher.size();
-    std::vector<double> difference;
+    vector<double> difference;
     
-    std::vector<double> randomUniform1 = getRandomArray(num_features, 0.0, 1.0);
-    std::vector<double> randomUniform2 = getRandomArray(num_features, 1.0, 2.0);
+    vector<double> randomUniform1 = getRandomArray(num_features, 0.0, 1.0);
+    vector<double> randomUniform2 = getRandomArray(num_features, 1.0, 2.0);
     
     for (size_t i = 0; i < num_features; i++) {
         difference.push_back(randomUniform1[i] * (teacher[i] - randomUniform2[i] * population_mean[i]));
@@ -336,12 +435,12 @@ std::vector<double> calculateDifference(const std::vector<double>& teacher, cons
     return difference;
 }
 
-std::vector<double> calculateDifferenceRand(const std::vector<double>& rand1,const std::vector<double>& rand2, const std::vector<double>& population_cur) {
+vector<double> calculateDifferenceRand(const vector<double>& rand1,const vector<double>& rand2, const vector<double>& population_cur) {
     // Подсчет разности для рандомных особей (метаэвристика TLBO)
     size_t num_features = population_cur.size();
-    std::vector<double> new_population;
+    vector<double> new_population;
     
-    std::vector<double> randomUniform1 = getRandomArray(num_features, 0.0, 1.0);
+    vector<double> randomUniform1 = getRandomArray(num_features, 0.0, 1.0);
     
     for (size_t i = 0; i < num_features; i++) {
         new_population.push_back(population_cur[i] + randomUniform1[i] * (rand1[i] - rand2[i]));
@@ -350,10 +449,10 @@ std::vector<double> calculateDifferenceRand(const std::vector<double>& rand1,con
     return new_population;
 }
 
-std::vector<double> calculateDifferenceSCA(const std::vector<double>& random_agent,const std::vector<double>& agent, const double C) {
+vector<double> calculateDifferenceSCA(const vector<double>& random_agent,const vector<double>& agent, const double C) {
     // Подсчет разности между агентами в популяции (метаэвристика SCA)
     size_t num_features = agent.size();
-    std::vector<double> D;
+    vector<double> D;
         
     for (size_t i = 0; i < num_features; i++) {
         D.push_back(abs(C * random_agent[i] - agent[i]));
@@ -362,10 +461,10 @@ std::vector<double> calculateDifferenceSCA(const std::vector<double>& random_age
     return D;
 }
 
-std::vector<double> calculateDifferenceRandomPositonSCA(const std::vector<double>& random_agent,const std::vector<double>& D, const double A) {
+vector<double> calculateDifferenceRandomPositonSCA(const vector<double>& random_agent,const vector<double>& D, const double A) {
     // Подсчет разности для рандомных позиций (метаэвристика SCA)
     size_t num_features = D.size();
-    std::vector<double> new_position;
+    vector<double> new_position;
         
     for (size_t i = 0; i < num_features; i++) {
         new_position.push_back(random_agent[i] - D[i]*A);
@@ -376,30 +475,30 @@ std::vector<double> calculateDifferenceRandomPositonSCA(const std::vector<double
 
 int getRandomIndex(int population_size) {
     // Функция генерирует рандомное целое число - индекс для особи в популяции
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    random_device rd;
+    mt19937 gen(rd());
 
-    std::uniform_int_distribution<int> uniform_dist(0, population_size - 1);
+    uniform_int_distribution<int> uniform_dist(0, population_size - 1);
 
     return uniform_dist(gen);
 }
 
 double getRandomValue(double low, double high) {
     // Функция генерирует случайное нецелое число в интервале (low,high)
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::uniform_real_distribution<double> distribution(low, high);
+    random_device rd;
+    mt19937 rng(rd());
+    uniform_real_distribution<double> distribution(low, high);
     double randomInteger = distribution(rng);
     return double(randomInteger);
 }
 
-std::vector<double> updatePosition(const std::vector<double>& agent, double t, std::pair<double,double> search) {
-    std::vector<double> new_position(agent.size());
+vector<double> updatePosition(const vector<double>& agent, double t, pair<double,double> search) {
+    vector<double> new_position(agent.size());
     for(size_t i = 0; i < agent.size(); i++) {
         double amplitude = (search.second - search.first) / 2.0;
-        new_position[i] = agent[i] + amplitude * std::sin(2 * M_PI * t);
+        new_position[i] = agent[i] + amplitude * sin(2 * M_PI * t);
         // Обеспечиваем, что новая позиция находится в пределах пространства поиска
-        new_position[i] = std::clamp(new_position[i], search.first, search.second);
+        new_position[i] = clamp(new_position[i], search.first, search.second);
     }
     return new_position;
 }
@@ -417,14 +516,14 @@ class TLBO{
     int population_size;
     int num_iterations;
     int num_features;
-    std::vector<std::vector<double>> population;
+    vector<vector<double>> population;
 
     public:
-    TLBO(const std::vector<std::vector<double>>& initial_population, int population_size, int num_iterations, int num_features)
+    TLBO(const vector<vector<double>>& initial_population, int population_size, int num_iterations, int num_features)
         : population_size(population_size), num_iterations(num_iterations), num_features(num_features), population(initial_population) {
     }
 
-    std::pair<double, vector<double>> optimize(Metric& obj) {
+    pair<double, vector<double>> optimize(Metric& obj) {
         /*
             Функция реализует оптимизацию метрики с помощью метаэвристики TLBO
             На входе - объект класса метрики
@@ -434,7 +533,7 @@ class TLBO{
     
         vector<double> fitness; // вектор, содержащий значения кач-ва для каждой особи
         for (int i = 0; i < population.size(); i++){
-            std::pair<double, vector<double>> pr = obj.metric(population[i]);
+            pair<double, vector<double>> pr = obj.metric(population[i]);
             population[i] = pr.second; // обновление особи после метрики, с учетом ограничений
             fitness.push_back(pr.first);
         }
@@ -456,7 +555,7 @@ class TLBO{
                         difference[j] += population[i][j];
                     
                     double old_score = fitness[i];
-                    std::pair<double,vector<double>> new_sc_d = obj.metric(difference);
+                    pair<double,vector<double>> new_sc_d = obj.metric(difference);
                     if (new_sc_d.first > old_score){ // проверка, обучил ли учитель ученика 
                         population[i] = new_sc_d.second; // если да - обновляем значение особи и значение метрики для нее 
                         fitness[i] = new_sc_d.first;
@@ -484,7 +583,7 @@ class TLBO{
                 }
 
                 double old_score = fitness[i];
-                std::pair<double,vector<double>> new_sc_d = obj.metric(new_population);
+                pair<double,vector<double>> new_sc_d = obj.metric(new_population);
                 if (new_sc_d.first > old_score){ // проверка - лучше ли стало, по сравнению с изначальным
                     population[i] = new_sc_d.second; // если да - обновляем особь, меняем значения метрики
                     fitness[i] = new_sc_d.first;
@@ -502,7 +601,7 @@ class TLBO{
             }
         }
 
-        std::pair<double,vector<double>> to_ret = std::make_pair(max_fitness,best_agent);
+        pair<double,vector<double>> to_ret = make_pair(max_fitness,best_agent);
         return to_ret;
     }
 };
@@ -520,14 +619,14 @@ class SCA{
     int population_size;
     int num_iterations;
     int num_features;
-    std::vector<std::vector<double>> agents; // Reference to the population used for Metric
+    vector<vector<double>> agents; // Reference to the population used for Metric
 
     public:
-    SCA(const std::vector<std::vector<double>>& initial_population, int population_size, int num_iterations, int num_features)
+    SCA(const vector<vector<double>>& initial_population, int population_size, int num_iterations, int num_features)
         : population_size(population_size), num_iterations(num_iterations), num_features(num_features), agents(initial_population) {
     }
 
-    std::pair<double, vector<double>> optimize(Metric& obj, int flag = 0, double a_linear_component = 2.0) {
+    pair<double, vector<double>> optimize(Metric& obj, int flag = 0, double a_linear_component = 2.0) {
         /*
             Функция реализует оптимизацию метрики с помощью метаэвристики SCA
             На входе - объект класса метрики, flag - встраиваем 1 бит или несколько (для встраивания бит-флага 0)
@@ -538,7 +637,7 @@ class SCA{
         double best_fitness = 0.0;
         vector<double> fitness;
         for (int i = 0; i < agents.size(); i++){
-            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+            pair<double, vector<double>> pr = obj.metric(agents[i]);
             agents[i] = pr.second;
             fitness.push_back(pr.first);
         }
@@ -566,7 +665,7 @@ class SCA{
                 vector <double> D = calculateDifferenceSCA(random_agent,agents[i],C);
                 vector <double> new_position = calculateDifferenceRandomPositonSCA(random_agent,D,A);
 
-                std::pair<double,vector<double>> now_func_bl = obj.metric(new_position);
+                pair<double,vector<double>> now_func_bl = obj.metric(new_position);
                 if (now_func_bl.first > fitness[i]){
                     agents[i] = now_func_bl.second;
                     fitness[i] = now_func_bl.first;
@@ -578,13 +677,13 @@ class SCA{
 
                 if (flag){ // при встраивании одного бита
                     if (best_agent_fitness > 0){
-                        std::pair<double,vector<double>> to_ret = std::make_pair(best_agent_fitness,best_agent);
+                        pair<double,vector<double>> to_ret = make_pair(best_agent_fitness,best_agent);
                         return to_ret;
                     }
                 }
             }
         }
-        std::pair<double,vector<double>> to_ret = std::make_pair(best_agent_fitness,best_agent);
+        pair<double,vector<double>> to_ret = make_pair(best_agent_fitness,best_agent);
         return to_ret;
     }
 };
@@ -602,14 +701,14 @@ class DE{
     int population_size;
     int num_iterations;
     int num_features;
-    std::vector<std::vector<double>> agents; // Reference to the population used for Metric
+    vector<vector<double>> agents; // Reference to the population used for Metric
 
     public:
-    DE(const std::vector<std::vector<double>>& initial_population, int population_size, int num_iterations, int num_features)
+    DE(const vector<vector<double>>& initial_population, int population_size, int num_iterations, int num_features)
         : population_size(population_size), num_iterations(num_iterations), num_features(num_features), agents(initial_population) {
     }
 
-    std::pair<double, vector<double>> optimize(Metric& obj, double cr = 0.3, double f = 0.1) { 
+    pair<double, vector<double>> optimize(Metric& obj, double cr = 0.3, double f = 0.1) { 
         /*  
             Функция реализует оптимизацию метрики с помощью метаэвристики DE
             На входе - объект класса метрики, flag - встраиваем 1 бит или несколько (для встраивания бит-флага 0)
@@ -619,7 +718,7 @@ class DE{
         double best_fitness = 0.0;
         vector<double> fitness;
         for (int i = 0; i < agents.size(); i++){
-            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+            pair<double, vector<double>> pr = obj.metric(agents[i]);
             agents[i] = pr.second;
             fitness.push_back(pr.first);
         }
@@ -655,7 +754,7 @@ class DE{
                         y[pos] = agents[i][pos];
                 }
                 // проверка новой особи
-                std::pair<double, vector<double>> pr = obj.metric(y);
+                pair<double, vector<double>> pr = obj.metric(y);
                 if (pr.first > fitness[i]){
                     fitness[i] = pr.first;
                     agents[i] = pr.second;
@@ -671,7 +770,7 @@ class DE{
 //        double best_agent_fitness = 0;
 //        vector <double> best_agent;
 //        for (int i = 0; i < agents.size(); i++){
-//            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+//            pair<double, vector<double>> pr = obj.metric(agents[i]);
 //            agents[i] = pr.second;
 //            fitness[i] = pr.first;
 //            if (fitness[i] > best_agent_fitness){
@@ -679,7 +778,7 @@ class DE{
 //                best_agent = agents[i];
 //            }
 //        }
-        std::pair<double,vector<double>> to_ret = std::make_pair(best_agent_fitness,best_agent);
+        pair<double,vector<double>> to_ret = make_pair(best_agent_fitness,best_agent);
         return to_ret;
     }
 };
@@ -698,32 +797,32 @@ private:
     int num_salps; // population_size
     int num_iterations;
     int num_dimensions; // num_features
-    std::vector<std::vector<double>> salps; // Reference to the population used for Metric
+    vector<vector<double>> salps; // Reference to the population used for Metric
 
 public:
-    SSA(const std::vector<std::vector<double>>& initial_population,int searching, int num_salps, int num_iterations, int num_dimensions)
+    SSA(const vector<vector<double>>& initial_population,int searching, int num_salps, int num_iterations, int num_dimensions)
             : searching(searching), num_salps(num_salps), num_iterations(num_iterations), num_dimensions(num_dimensions),salps(initial_population) {
     }
 
-    std::pair<double, vector<double>> optimize(Metric& obj) {
+    pair<double, vector<double>> optimize(Metric& obj) {
         /*
             Функция реализует оптимизацию метрики с помощью метаэвристики SCA
             На входе - объект класса метрики, flag - встраиваем 1 бит или несколько (для встраивания бит-флага 0)
             На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
         */
-        const std::pair<double, double> search_space(static_cast<double>(-searching),static_cast<double>(searching));
+        const pair<double, double> search_space(static_cast<double>(-searching),static_cast<double>(searching));
         // Calculate fitness for each salp
-        std::vector<double> fitness(num_salps);
+        vector<double> fitness(num_salps);
         for (int i = 0; i < num_salps; ++i) {
-            std::pair<double, vector<double>> pr = obj.metric(salps[i]);
+            pair<double, vector<double>> pr = obj.metric(salps[i]);
             salps[i] = pr.second;
             fitness[i] = pr.first;
         }
 
         for (int t = 0; t < num_iterations; ++t) {
             // Get the best salp
-            int best_index = std::distance(fitness.begin(), std::max_element(fitness.begin(), fitness.end()));
-            std::vector<double> best_salp = salps[best_index];
+            int best_index = distance(fitness.begin(), max_element(fitness.begin(), fitness.end()));
+            vector<double> best_salp = salps[best_index];
 
             // Update positions with adaptive parameter
             double w = 1.0 - (static_cast<double>(t) / num_iterations);
@@ -738,7 +837,7 @@ public:
 
                         // Introduce randomization for the latter half of iterations
                         if (t > num_iterations / 2) {
-                            salps[i][j] += w * (2.0 * static_cast<double>(std::rand()) / RAND_MAX - 1.0); // random value in [-1,1]
+                            salps[i][j] += w * (2.0 * static_cast<double>(rand()) / RAND_MAX - 1.0); // random value in [-1,1]
                         }
                         // Boundary check
                         if (salps[i][j] < search_space.first) {
@@ -752,14 +851,14 @@ public:
 
             // Update fitness values
             for (int i = 0; i < num_salps; ++i) {
-                std::pair<double, vector<double>> pr = obj.metric(salps[i]);
+                pair<double, vector<double>> pr = obj.metric(salps[i]);
                 salps[i] = pr.second;
                 fitness[i] = pr.first;
             }
         }
 
-        int best_index = std::distance(fitness.begin(), std::max_element(fitness.begin(), fitness.end()));
-        std::pair<double,vector<double>> to_ret = std::make_pair(fitness[best_index],salps[best_index]);
+        int best_index = distance(fitness.begin(), max_element(fitness.begin(), fitness.end()));
+        pair<double,vector<double>> to_ret = make_pair(fitness[best_index],salps[best_index]);
         return to_ret;
     }
 };
@@ -777,24 +876,24 @@ private:
     int num_agents;
     int num_iterations;
     int num_features;
-    std::vector<std::vector<double>> agents;
+    vector<vector<double>> agents;
     int searching;
 public:
-    WOA(const std::vector<std::vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching)
+    WOA(const vector<vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching)
             : num_agents(num_agents), num_iterations(num_iterations), num_features(num_features), agents(initial_population),searching(searching) {
     }
 
-    std::pair<double, vector<double>> optimize(Metric& obj) {
+    pair<double, vector<double>> optimize(Metric& obj) {
         /*
             Функция реализует оптимизацию метрики с помощью метаэвристики WOA
             На входе - объект класса метрики
             На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
         */
 
-        std::vector<double> fitness(num_agents);
-        const std::pair<double, double> search_space(static_cast<double>(-searching),static_cast<double>(searching));
+        vector<double> fitness(num_agents);
+        const pair<double, double> search_space(static_cast<double>(-searching),static_cast<double>(searching));
         for(int i = 0; i < num_agents; i++) {
-            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+            pair<double, vector<double>> pr = obj.metric(agents[i]);
             agents[i] = pr.second; // обновление особи после метрики, с учетом ограничений
             fitness.push_back(pr.first);
         }
@@ -814,34 +913,34 @@ public:
 
                 double p = getRandomValue(0, 1);
 
-                std::vector<double> X_rand = agents[getRandomValue(0, num_agents - 1)];
+                vector<double> X_rand = agents[getRandomValue(0, num_agents - 1)];
 
-                std::vector<double> D_X_rand(num_features);
-                std::vector<double> X_new(num_features);
+                vector<double> D_X_rand(num_features);
+                vector<double> X_new(num_features);
 
                 if(p < 0.5) {
-                    if(std::fabs(A) < 1) {
+                    if(fabs(A) < 1) {
                         for(int j = 0; j < num_features; j++) {
-                            D_X_rand[j] = std::fabs(C * X_rand[j] - agents[i][j]);
+                            D_X_rand[j] = fabs(C * X_rand[j] - agents[i][j]);
                             X_new[j] = X_rand[j] - A * D_X_rand[j];
                         }
                     } else {
                         for(int j = 0; j < num_features; j++) {
-                            X_new[j] = X_rand[j] - A * std::fabs(C * X_rand[j] - agents[i][j]);
+                            X_new[j] = X_rand[j] - A * fabs(C * X_rand[j] - agents[i][j]);
                         }
                     }
                 } else {
                     for(int j = 0; j < num_features; j++) {
-                        D_X_rand[j] = std::fabs(X_rand[j] - agents[i][j]);
-                        X_new[j] = D_X_rand[j] * std::exp(b * l) * std::cos(2 * M_PI * l) + X_rand[j];
+                        D_X_rand[j] = fabs(X_rand[j] - agents[i][j]);
+                        X_new[j] = D_X_rand[j] * exp(b * l) * cos(2 * M_PI * l) + X_rand[j];
                     }
                 }
 
                 for(int j = 0; j < num_features; j++) {
-                    X_new[j] = std::clamp(X_new[j], search_space.first, search_space.second);
+                    X_new[j] = clamp(X_new[j], search_space.first, search_space.second);
                 }
 
-                std::pair<double, vector<double>> pr  = obj.metric(X_new);
+                pair<double, vector<double>> pr  = obj.metric(X_new);
                 if(pr.first > fitness[i]) {
                     agents[i] = pr.second;
                     fitness[i] = pr.first;
@@ -849,9 +948,9 @@ public:
             }
         }
 
-        auto max_element_iter = std::max_element(fitness.begin(), fitness.end());
-        int best_index = std::distance(fitness.begin(), max_element_iter);
-        std::pair<double,vector<double>> to_ret = std::make_pair(fitness[best_index],agents[best_index]);
+        auto max_element_iter = max_element(fitness.begin(), fitness.end());
+        int best_index = distance(fitness.begin(), max_element_iter);
+        pair<double,vector<double>> to_ret = make_pair(fitness[best_index],agents[best_index]);
         return to_ret;
     }
 };
@@ -869,35 +968,35 @@ private:
     int num_agents;
     int num_iterations;
     int num_features;
-    std::vector<std::vector<double>> agents;
+    vector<vector<double>> agents;
     int searching;
     int num_empires;
 public:
-    ICA(const std::vector<std::vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching, int num_empires)
+    ICA(const vector<vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching, int num_empires)
             : num_agents(num_agents), num_iterations(num_iterations), num_features(num_features), agents(initial_population),searching(searching),num_empires(num_empires) {
     }
 
-    std::pair<double, vector<double>> optimize(Metric& obj) {
+    pair<double, vector<double>> optimize(Metric& obj) {
         /*
             Функция реализует оптимизацию метрики с помощью метаэвристики ICA
             На входе - объект класса метрики
             На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
         */
-        std::vector<double> fitness(num_agents);
+        vector<double> fitness(num_agents);
         for (int i = 0; i < num_agents; ++i) {
-            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+            pair<double, vector<double>> pr = obj.metric(agents[i]);
             agents[i] = pr.second;
             fitness[i] = pr.first;
         }
 
-        std::vector<int> sorted_indices(num_agents);
-        std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
-        std::sort(sorted_indices.begin(), sorted_indices.end(), [&fitness](int i1, int i2) { return fitness[i1] > fitness[i2]; });
+        vector<int> sorted_indices(num_agents);
+        iota(sorted_indices.begin(), sorted_indices.end(), 0);
+        sort(sorted_indices.begin(), sorted_indices.end(), [&fitness](int i1, int i2) { return fitness[i1] > fitness[i2]; });
 
-        std::vector<std::vector<double>> empires(num_empires);
-        std::vector<std::vector<double>> colonies(num_agents - num_empires);
-        std::vector<double> empire_fitness(num_empires);
-        std::vector<double> colony_fitness(num_agents - num_empires);
+        vector<vector<double>> empires(num_empires);
+        vector<vector<double>> colonies(num_agents - num_empires);
+        vector<double> empire_fitness(num_empires);
+        vector<double> colony_fitness(num_agents - num_empires);
 
         for (int i = 0; i < num_empires; ++i) {
             empires[i] = agents[sorted_indices[i]];
@@ -920,13 +1019,13 @@ public:
 
             // Осуществляем скрещивание между империями
             for (int i = 0; i < num_empires; ++i) {
-                if (static_cast<double>(std::rand()) / RAND_MAX < 0.5) {
-                    int other = std::rand() % num_empires;
-                    std::vector<double> child(num_features);
+                if (static_cast<double>(rand()) / RAND_MAX < 0.5) {
+                    int other = rand() % num_empires;
+                    vector<double> child(num_features);
                     for (int j = 0; j < num_features; ++j) {
                         child[j] = 0.5 * (empires[i][j] + empires[other][j]);
                     }
-                    std::pair<double, vector<double>> pr  = obj.metric(child);
+                    pair<double, vector<double>> pr  = obj.metric(child);
                     if (pr.first > empire_fitness[i]) {
                         empires[i] = pr.second;
                         empire_fitness[i] = pr.first;
@@ -950,24 +1049,24 @@ public:
 
             // Обновление приспособленности всех агентов
             for (int i = 0; i < num_empires; ++i) {
-                std::pair<double, vector<double>> pr  = obj.metric(empires[i]);
+                pair<double, vector<double>> pr  = obj.metric(empires[i]);
                 empire_fitness[i] = pr.first;
                 empires[i] = pr.second;
             }
             for (int i = 0; i < colonies.size(); ++i) {
-                std::pair<double, vector<double>> pr  = obj.metric(colonies[i]);
+                pair<double, vector<double>> pr  = obj.metric(colonies[i]);
                 colony_fitness[i] = pr.first;
                 colonies[i] = pr.second;
             }
 
             // Поиск лучшей империи
-            int best_index = std::distance(empire_fitness.begin(), std::max_element(empire_fitness.begin(), empire_fitness.end()));
+            int best_index = distance(empire_fitness.begin(), max_element(empire_fitness.begin(), empire_fitness.end()));
             auto best_agent = empires[best_index];
             double best_fitness = empire_fitness[best_index];
                                                    }
 
-        int best_index = std::distance(empire_fitness.begin(), std::max_element(empire_fitness.begin(), empire_fitness.end()));;
-        std::pair<double,vector<double>> to_ret = std::make_pair(empire_fitness[best_index],empires[best_index]);
+        int best_index = distance(empire_fitness.begin(), max_element(empire_fitness.begin(), empire_fitness.end()));;
+        pair<double,vector<double>> to_ret = make_pair(empire_fitness[best_index],empires[best_index]);
         return to_ret;
     }
 }; // num_empires??
@@ -985,23 +1084,23 @@ private:
     int num_agents;
     int num_iterations;
     int num_features;
-    std::vector<std::vector<double>> agents;
+    vector<vector<double>> agents;
     int searching;
 public:
-    AOA(const std::vector<std::vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching)
+    AOA(const vector<vector<double>>& initial_population, int num_agents, int num_iterations, int num_features,int searching)
             : num_agents(num_agents), num_iterations(num_iterations), num_features(num_features), agents(initial_population),searching(searching) {
     }
 
-    std::pair<double, vector<double>> optimize(Metric& obj) {
+    pair<double, vector<double>> optimize(Metric& obj) {
         /*
             Функция реализует оптимизацию метрики с помощью метаэвристики AOA
             На входе - объект класса метрики
             На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
         */
-        std::pair<double,double> search(static_cast<double>(-searching),static_cast<double>(searching));
-        std::vector<double> fitness(num_agents);
+        pair<double,double> search(static_cast<double>(-searching),static_cast<double>(searching));
+        vector<double> fitness(num_agents);
         for (int i = 0; i < num_agents; ++i) {
-            std::pair<double, vector<double>> pr = obj.metric(agents[i]);
+            pair<double, vector<double>> pr = obj.metric(agents[i]);
             agents[i] = pr.second;
             fitness[i] = pr.first;
         }
@@ -1010,8 +1109,8 @@ public:
             double time_ratio = static_cast<double>(t) / num_iterations;
 
             for (int i = 0; i < num_agents; i++) {
-                std::vector<double> new_position = updatePosition(agents[i], time_ratio, search);
-                std::pair<double, vector<double>> pr  = obj.metric(new_position);
+                vector<double> new_position = updatePosition(agents[i], time_ratio, search);
+                pair<double, vector<double>> pr  = obj.metric(new_position);
                 if (pr.first > fitness[i]) {
                     agents[i] = pr.second;
                     fitness[i] = pr.first;
@@ -1019,14 +1118,14 @@ public:
             }
         }
 
-        auto max_element_iter = std::max_element(fitness.begin(), fitness.end());
-        int best_index = std::distance(fitness.begin(), max_element_iter);
-        std::pair<double,vector<double>> to_ret = std::make_pair(fitness[best_index],agents[best_index]);
+        auto max_element_iter = max_element(fitness.begin(), fitness.end());
+        int best_index = distance(fitness.begin(), max_element_iter);
+        pair<double,vector<double>> to_ret = make_pair(fitness[best_index],agents[best_index]);
         return to_ret;
     }
 };
 
-double psnr(std::vector<std::vector<int>> original_img,std::vector<std::vector<int>> saved_img){
+double psnr(vector<vector<int>> original_img,vector<vector<int>> saved_img){
     /*
         Функция принимает на вход оригинальное изображение и изображение после вставки
         На выходе - значение метрики psnr
@@ -1040,7 +1139,7 @@ double psnr(std::vector<std::vector<int>> original_img,std::vector<std::vector<i
     return psnr;
 }
 
-double ssim(std::vector<std::vector<int>> original_img,std::vector<std::vector<int>> saved_img){
+double ssim(vector<vector<int>> original_img,vector<vector<int>> saved_img){
     /*
         Функция принимает на вход оригинальное изображение и изображение после вставки
         На выходе - значение метрики ssim
@@ -1077,17 +1176,15 @@ double ssim(std::vector<std::vector<int>> original_img,std::vector<std::vector<i
 
 
 int main() {
-
-    vector <string> pictures{
-    "peppers512.png","lena512.png",
-    "airplane512.png","baboon512.png","barbara512.png",
-    "boat512.png","goldhill512.png","stream_and_bridge512.png"
+    vector <string> pictures{                             "peppers512.png","lena512.png",
+                             "airplane512.png","baboon512.png","barbara512.png",
+                             "boat512.png","goldhill512.png","stream_and_bridge512.png"
     };
-
     vector <string> metaheu{
         "sca","tlbo","ica","aoa","ssa","woa","de"
     };
-
+    string method = "frequency";
+//    string method = "spatial";
     for (int m4 = 0; m4 < metaheu.size(); m4++) {
         string METAHEURISTIC = metaheu[m4];
         cout << METAHEURISTIC << '\n';
@@ -1097,7 +1194,7 @@ int main() {
             cout << picture << ' ';
             const string directoryPath = picture + METAHEURISTIC;
             // Create the directory using mkdir
-            int status = std::system(("mkdir " + std::string(directoryPath)).c_str());
+            int status = system(("mkdir " + string(directoryPath)).c_str());
             int mode = 1;
             if (mode == 1) { // встраивание
                 const int SEARCH_SPACE = 10; // пространство поиска
@@ -1112,7 +1209,7 @@ int main() {
                 cv::Mat image = cv::imread(picture, cv::IMREAD_GRAYSCALE);
                 int rows = image.rows;
                 int cols = image.cols;
-                std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
+                vector<vector<int>> img(rows, vector<int>(cols));
 
                 // трансформация из формата <Mat> в <vector>
                 for (int i = 0; i < rows; i++)
@@ -1121,7 +1218,7 @@ int main() {
 
                 //генерация порядка блоков, сохранение их в файл
                 vector<int> blocks = generate_blocks(rows * cols / 64);
-                std::ofstream outputFile(picture + METAHEURISTIC + "/blocks.txt");
+                ofstream outputFile(picture + METAHEURISTIC + "/blocks.txt");
                 for (int num: blocks)
                     outputFile << num << ' ';
                 outputFile.close();
@@ -1130,7 +1227,7 @@ int main() {
                 int cnt1 = 0;
                 int cnt_blocks = 0;
 
-                for (int i: blocks) {
+                for (int i : blocks) {
                     cout << endl << cnt_blocks++ << ' ' << endl;
                     //получаем блок изображения по известному номера блока
                     int block_w = i % (rows / 8);
@@ -1142,21 +1239,29 @@ int main() {
 
                     //трансформация из пикселей в DCT-coef
                     vector<vector<double>> dct_matrix;
+                    vector<vector<double>> dct_matrix_new;
                     dct_matrix = do_dct(pixel_matrix);
 
                     //встраивание информации в DCT-coef блок
-                    dct_matrix = embed_to_dct(dct_matrix, string(1, '1') + information.substr(ind_information, 31));
+                    dct_matrix_new = embed_to_dct(dct_matrix, string(1, '1') + information.substr(ind_information, 31));
 
+                    vector<vector<double>> population;
+                    if (method == "spatial"){
                     //перевод блока из DCT-coef в пиксельный формат
-                    vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
+                    vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix_new);
 
                     //генерация популяции на основе блока после встраивания и изначального
-                    vector<vector<double>> population = generate_population(pixel_matrix, new_pixel_matrix, 128,
+                    population = generate_population(pixel_matrix, new_pixel_matrix, 128,
                                                                             double(0.9), SEARCH_SPACE);
+                    }
 
+                    else if (method == "frequency"){
+                        population = generate_population_dct(dct_matrix, dct_matrix_new, 128,
+                                                                                double(0.9), SEARCH_SPACE);
+                    }
                     //задаем объект метрики для данного блока и информации для встраивания
                     Metric metric(pixel_matrix, string(1, '1') + information.substr(ind_information, 31), SEARCH_SPACE,
-                                  'A');
+                                  'A',method);
                     //выбор метаэвристики и оптимизации с помощью нее
                     pair<double, vector<double>> solution;
                     if (METAHEURISTIC == "tlbo") {
@@ -1187,39 +1292,58 @@ int main() {
                         ICA meta(population, 128, 128, 64, SEARCH_SPACE, 10);
                         solution = meta.optimize(metric);
                     }
-                    //pair<double, vector<double>> solution = meta.optimize(metric);
-
                     if (solution.first > 1) { // значение кач-ва метрики >1 => информация встроена идеально, сохраняем новый блок, добавляя к нему матрицу изменений
                         cnt1 += 1;
-                        int ind = 0;
-                        for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++) {
-                            for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++) {
-                                copy_img[i1][i2] -= solution.second[ind];
-                                ind++;
+                        if (method == "frequency"){
+                            vector<vector<double>> dct_coef_block = do_dct(pixel_matrix);
+                            int ind_fl = 0;
+                            for (int i10 = 0; i10 < 8; i10++) {
+                                for (int j10 = 0; j10 < 8; j10++) {
+                                    dct_coef_block[i10][j10] -= solution.second[ind_fl]; ///asdasd
+                                    ind_fl++;
+                                }
+                            }
+                            vector<vector<int>> new_block = undo_dct(dct_coef_block);
+                            for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++) {
+                                for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++) {
+                                    copy_img[i1][i2] = new_block[i1-block_h*8][i2-block_w*8];
+                                }
                             }
                         }
 
-                        vector<vector<int>> new_pixel_matrix_1(8, vector<int>(8));
-                        for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++)
-                            for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++)
-                                new_pixel_matrix_1[i1 - block_h * 8][i2 - block_w * 8] = copy_img[i1][i2];
-
+                        else{
+                            int ind = 0;
+                            for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++) {
+                                for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++) {
+                                    copy_img[i1][i2] -= solution.second[ind];
+                                    ind++;
+                                }
+                            }
+                        }
                         ind_information += 31; // переход к следующей части информации
-                    } else { // информация встроена неидеально
+                    }
+                    else { // информация встроена неидеально
                         cout << solution.first;
                         int searching = 5;
                         // встраиваем 1 бит - 0
-                        dct_matrix = embed_to_dct(do_dct(pixel_matrix), string(1, '0'), 'Z');
+                        dct_matrix = do_dct(pixel_matrix);
+                        dct_matrix_new = embed_to_dct(dct_matrix, string(1, '0'), 'Z');
+                        if (method == "spatial"){
+                            //перевод блока из DCT-coef в пиксельный формат
+                            vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix_new);
 
-                        // перевод из DCT-coef в пиксели
-                        vector<vector<int>> new_pixel_matrix = undo_dct(dct_matrix);
+                            //генерация популяции на основе блока после встраивания и изначального
+                            population = generate_population(pixel_matrix, new_pixel_matrix, 128,
+                                                             double(0.9), searching);
+                        }
 
-                        //генерация популяции
-                        vector<vector<double>> population = generate_population(pixel_matrix, new_pixel_matrix, 128,
-                                                                                double(0.9), searching);
+                        else if (method == "frequency"){
+                            population = generate_population_dct(dct_matrix, dct_matrix_new, 128,
+                                                                 double(0.9), searching);
+                        }
 
                         //создание объекта метрики, с учетом встраивание 1 бита
-                        Metric metric(pixel_matrix, string(1, '0'), searching, 'Z');
+                        Metric metric(pixel_matrix, string(1, '0'), searching, 'Z',method);
 
                         // оптимизация с помощью метаэвристики SCA
                         SCA sca(population, 128, 128, 64);
@@ -1228,10 +1352,32 @@ int main() {
                         for (int i1 = 0; i1 < 64; i1++)
                             cout << solution.second[i1] << ' ';
                         //сохраняем блок, в который не встраивалась информация
-                        int ind = 0;
-                        for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++)
-                            for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++)
-                                copy_img[i1][i2] -= solution.second[ind++];
+                        if (method == "frequency"){
+                            vector<vector<double>> dct_coef_block = do_dct(pixel_matrix);
+                            int ind_fl = 0;
+                            for (int i1 = 0; i1 < 8; i1++) {
+                                for (int j1 = 0; j1 < 8; j1++) {
+                                    dct_coef_block[i1][j1] -= solution.second[ind_fl];
+                                    ind_fl++;
+                                }
+                            }
+                            vector<vector<int>> new_block = undo_dct(dct_coef_block);
+                            for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++) {
+                                for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++) {
+                                    copy_img[i1][i2] = new_block[i1-block_h*8][i2-block_w*8];
+                                }
+                            }
+                        }
+
+                        else{
+                            int ind = 0;
+                            for (int i1 = block_h * 8; i1 < block_h * 8 + 8; i1++) {
+                                for (int i2 = block_w * 8; i2 < block_w * 8 + 8; i2++) {
+                                    copy_img[i1][i2] -= solution.second[ind];
+                                    ind++;
+                                }
+                            }
+                        }
                     }
 
                 }
@@ -1241,7 +1387,7 @@ int main() {
                 for (int row = 0; row < rows; row++)
                     for (int col = 0; col < cols; col++)
                         imageMat.at<uchar>(row, col) = static_cast<uchar>(copy_img[row][col]);
-                std::string outputFilePath = picture + METAHEURISTIC + "/saved.png";
+                string outputFilePath = picture + METAHEURISTIC + "/saved.png";
                 bool success = cv::imwrite(outputFilePath, imageMat);
 
                 cout << cnt1;
@@ -1254,7 +1400,7 @@ int main() {
                 cv::Mat image = cv::imread(picture + METAHEURISTIC + "/saved.png", cv::IMREAD_GRAYSCALE);
                 int rows = image.rows;
                 int cols = image.cols;
-                std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
+                vector<vector<int>> img(rows, vector<int>(cols));
 
                 // переводим из формата <Mat> в <vector>
                 for (int i = 0; i < rows; i++)
@@ -1262,8 +1408,8 @@ int main() {
                         img[i][j] = static_cast<int>(image.at<uchar>(i, j));
 
                 // открываем файл с порядком блоков
-                std::ifstream inputFile(picture + METAHEURISTIC + "/blocks.txt");
-                std::vector<int> blocks;
+                ifstream inputFile(picture + METAHEURISTIC + "/blocks.txt");
+                vector<int> blocks;
                 int num;
                 while (inputFile >> num) {
                     blocks.push_back(num);
@@ -1284,7 +1430,7 @@ int main() {
                         bit_string += s.substr(1);
                 }
                 // сохраняем извлеченную информацию в файл
-                std::ofstream outputFile(picture + METAHEURISTIC + "/saved.txt");
+                ofstream outputFile(picture + METAHEURISTIC + "/saved.txt");
                 outputFile << bit_string;
                 outputFile.close();
 
@@ -1292,7 +1438,7 @@ int main() {
                 cv::Mat image_base = cv::imread(picture, cv::IMREAD_GRAYSCALE);
                 rows = image_base.rows;
                 cols = image_base.cols;
-                std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
+                vector<vector<int>> img_base(rows, vector<int>(cols));
                 for (int i = 0; i < rows; i++)
                     for (int j = 0; j < cols; j++)
                         img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
@@ -1306,7 +1452,7 @@ int main() {
                 cv::Mat image = cv::imread(route, cv::IMREAD_GRAYSCALE);
                 int rows = image.rows;
                 int cols = image.cols;
-                std::vector<std::vector<int>> img(rows, std::vector<int>(cols));
+                vector<vector<int>> img(rows, vector<int>(cols));
 
                 // переводим из формата <Mat> в <vector>
                 for (int i = 0; i < rows; i++)
@@ -1316,14 +1462,14 @@ int main() {
                 cv::Mat image_base = cv::imread(picture, cv::IMREAD_GRAYSCALE);
                 rows = image_base.rows;
                 cols = image_base.cols;
-                std::vector<std::vector<int>> img_base(rows, std::vector<int>(cols));
+                vector<vector<int>> img_base(rows, vector<int>(cols));
                 for (int i = 0; i < rows; i++)
                     for (int j = 0; j < cols; j++)
                         img_base[i][j] = static_cast<int>(image_base.at<uchar>(i, j));
 
-                std::ifstream inputFile(directoryPath + "/saved.txt");
-                std::string line;
-                std::getline(inputFile, line);
+                ifstream inputFile(directoryPath + "/saved.txt");
+                string line;
+                getline(inputFile, line);
                 cout << psnr(img_base, img) << ' ' << ssim(img_base, img) << ' ' << line.length() << '\n';
             }
         }
