@@ -1,0 +1,3 @@
+/home/meto/Documents/cpp_tests/cmake-build-debug/CMakeFiles/main.dir
+/home/meto/Documents/cpp_tests/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/meto/Documents/cpp_tests/cmake-build-debug/CMakeFiles/rebuild_cache.dir

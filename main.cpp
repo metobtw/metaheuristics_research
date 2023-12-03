@@ -396,7 +396,7 @@ class Metric{
                 string new_s = extracting_dct(undo_dct(dct_coef_block));
                 if (new_s != s){
                     cnt = 0;
-                    cout << new_s << ' ' << s;
+                   // cout << new_s << ' ' << s;
                 }
             }
             to_ret = make_pair(psnr/10000 + double(cnt)/double(s.length()), to_ret_1d_dct);
@@ -889,7 +889,8 @@ public:
             На входе - объект класса метрики
             На выходе - лучшее значение метрики для всех особей в популяции, особь, показывающая лучшее значение метрики
         */
-
+        double best_fitness = 0;
+        vector <double> best_fitness_vec;
         vector<double> fitness(num_agents);
         const pair<double, double> search_space(static_cast<double>(-searching),static_cast<double>(searching));
         for(int i = 0; i < num_agents; i++) {
@@ -913,8 +914,7 @@ public:
 
                 double p = getRandomValue(0, 1);
 
-                vector<double> X_rand = agents[getRandomValue(0, num_agents - 1)];
-
+                vector<double> X_rand = agents[getRandomIndex(num_agents)];
                 vector<double> D_X_rand(num_features);
                 vector<double> X_new(num_features);
 
@@ -945,12 +945,14 @@ public:
                     agents[i] = pr.second;
                     fitness[i] = pr.first;
                 }
+                if (pr.first > best_fitness){
+                    best_fitness = pr.first;
+                    best_fitness_vec = pr.second;
+                }
             }
         }
 
-        auto max_element_iter = max_element(fitness.begin(), fitness.end());
-        int best_index = distance(fitness.begin(), max_element_iter);
-        pair<double,vector<double>> to_ret = make_pair(fitness[best_index],agents[best_index]);
+        pair<double,vector<double>> to_ret = make_pair(best_fitness,best_fitness_vec);
         return to_ret;
     }
 };
